@@ -1,5 +1,11 @@
 # CLAUDE.md — YouTube Video Fact-Checker
 
+## Memory
+
+Save all memory files to `.ai/memory/` (in the project root) instead of the default Claude memory path.
+The index file is `.ai/memory/MEMORY.md`. Use the same frontmatter format (name, description, type) and content conventions.
+This keeps memory version-controlled, visible, and shared across all agents working on this project.
+
 ## What This Is
 
 A web app that takes a YouTube URL and produces a structured summary, per-claim fact-checks with source citations, and a watch-worthiness assessment. Friends-scale, stateless, single-instance.
