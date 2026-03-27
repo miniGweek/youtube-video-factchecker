@@ -1,0 +1,50 @@
+@model ClaimVerdictModel
+
+@{
+    var verdictKey = Model.FactCheck.Verdict switch
+    {
+        Verdict.Supported          => "supported",
+        Verdict.Refuted            => "refuted",
+        Verdict.PartiallySupported => "partial",
+        Verdict.NotAClaim          => "notaclaim",
+        _                          => "unverifiable"
+    };
+
+    var verdictLabel = Model.FactCheck.Verdict switch
+    {
+        Verdict.Supported          => "Supported",
+        Verdict.Refuted            => "Refuted",
+        Verdict.PartiallySupported => "Partially supported",
+        Verdict.NotAClaim          => "Not a claim",
+        _                          => "Unverifiable"
+    };
+}
+
+<article class="verdict-@verdictKey" style="margin-bottom:.75rem">
+    <header style="display:flex;justify-content:space-between;align-items:center;gap:.5rem">
+        <span>@Model.Claim.Text</span>
+        <span class="badge badge-@verdictKey" style="flex-shrink:0">@verdictLabel</span>
+    </header>
+    <p style="margin:.5rem 0 0;font-size:.9rem;color:var(--pico-muted-color)">@Model.FactCheck.Reasoning</p>
+    @if (Model.FactCheck.Sources.Count > 0)
+    {
+        <details style="margin-top:.5rem">
+            <summary style="font-size:.85rem">Sources (@Model.FactCheck.Sources.Count)</summary>
+            <ul style="margin:.5rem 0 0;padding-left:1.25rem;font-size:.85rem">
+                @foreach (var source in Model.FactCheck.Sources)
+                {
+                    <li>
+                        <a href="@source.Url" target="_blank" rel="noopener"
+                           class="@(source.IsAccessible ? "source-accessible" : "source-inaccessible")">
+                            @source.Title
+                        </a>
+                        @if (!string.IsNullOrWhiteSpace(source.Snippet))
+                        {
+                            <span> — @source.Snippet</span>
+                        }
+                    </li>
+                }
+            </ul>
+        </details>
+    }
+</article>

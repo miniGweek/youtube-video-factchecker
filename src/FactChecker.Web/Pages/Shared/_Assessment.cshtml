@@ -1,0 +1,37 @@
+@model Assessment
+
+@{
+    var (recLabel, recBg, recFg) = Model.Recommendation switch
+    {
+        WatchRecommendation.Watch            => ("Watch", "#d4edda", "#155724"),
+        WatchRecommendation.WatchWithCaution => ("Watch with caution", "#fff3cd", "#856404"),
+        _                                    => ("Skip", "#f8d7da", "#721c24")
+    };
+}
+
+<article style="margin-top:1.5rem">
+    <header style="display:flex;align-items:center;gap:.75rem">
+        <strong>Recommendation</strong>
+        <span class="badge" style="background:@recBg;color:@recFg;font-size:1rem">@recLabel</span>
+    </header>
+
+    <p>@Model.Reasoning</p>
+
+    @if (!string.IsNullOrWhiteSpace(Model.InformationDensity))
+    {
+        <p><strong>Information density:</strong> @Model.InformationDensity</p>
+    }
+
+    @if (Model.Caveats.Count > 0)
+    {
+        <details open>
+            <summary>Caveats</summary>
+            <ul>
+                @foreach (var caveat in Model.Caveats)
+                {
+                    <li>@caveat</li>
+                }
+            </ul>
+        </details>
+    }
+</article>

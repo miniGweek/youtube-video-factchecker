@@ -1,0 +1,32 @@
+@page "{id}"
+@model AnalysisModel
+@{
+    ViewData["Title"] = "Analysing…";
+}
+
+<hgroup>
+    <h1>Analysis in progress</h1>
+    <p>Results appear below as each stage completes. This typically takes 30–90 seconds.</p>
+</hgroup>
+
+<section hx-ext="sse" sse-connect="/analysis/@Model.AnalysisId/stream">
+    <div id="status" sse-swap="Status">
+        <p aria-busy="true">Connecting to analysis stream…</p>
+    </div>
+
+    <div id="video-header" sse-swap="VideoHeader"></div>
+
+    <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem">
+        <div id="domain-badge" sse-swap="DomainBadge"></div>
+        <div id="transcript-info" sse-swap="TranscriptInfo"></div>
+    </div>
+
+    <div id="summary" sse-swap="Summary"></div>
+
+    <div id="claims-header" sse-swap="ClaimsHeader"></div>
+    <div id="claims-list" sse-swap="ClaimVerified" hx-swap="beforeend"></div>
+
+    <div id="score" sse-swap="Score"></div>
+    <div id="assessment" sse-swap="Assessment"></div>
+    <div id="error" sse-swap="Error"></div>
+</section>

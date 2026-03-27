@@ -1,0 +1,15 @@
+@model Summary
+
+<article>
+    <header><strong>Summary</strong></header>
+    <p>@Model.Thesis</p>
+    @if (Model.KeyPoints.Count > 0)
+    {
+        <ul>
+            @foreach (var point in Model.KeyPoints)
+            {
+                <li>@point</li>
+            }
+        </ul>
+    }
+</article>

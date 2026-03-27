@@ -1,0 +1,12 @@
+@model TranscriptExtractedEvent
+
+@{
+    var qualityLabel = Model.Quality == TranscriptQuality.Manual ? "Manual captions" : "Auto-generated captions";
+    var qualityColor = Model.Quality == TranscriptQuality.Manual ? "#155724" : "#856404";
+    var qualityBg = Model.Quality == TranscriptQuality.Manual ? "#d4edda" : "#fff3cd";
+}
+
+<small>
+    <span class="badge" style="background:@qualityBg;color:@qualityColor">@qualityLabel</span>
+    &nbsp;@Model.WordCount.ToString("N0", System.Globalization.CultureInfo.InvariantCulture) words
+</small>

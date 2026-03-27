@@ -1,0 +1,11 @@
+@model AnalysisError
+
+<article style="border-left:4px solid #8b0000;--pico-card-border-color:#8b0000;margin-top:1rem">
+    <header><strong style="color:#8b0000">Analysis failed</strong></header>
+    <p>@Model.Message</p>
+    <footer>
+        <small style="color:var(--pico-muted-color)">Stage: @Model.Stage</small>
+        &nbsp;·&nbsp;
+        <a href="/">Try another video</a>
+    </footer>
+</article>

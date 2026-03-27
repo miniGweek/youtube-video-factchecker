@@ -5,6 +5,7 @@ using FactChecker.Core.Interfaces;
 using FactChecker.Core.Pipeline;
 using FactChecker.Infrastructure.YouTube;
 using FactChecker.Web.Models;
+using FactChecker.Web.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FactChecker.Web.Endpoints;
@@ -21,6 +22,7 @@ internal static class AnalysisEndpoints
         app.MapPost("/api/analyse", PostAnalyse);
         app.MapGet("/api/analyse/{id}/stream", GetStream);
         app.MapGet("/api/analyse/{id}", GetById);
+        app.MapGet("/analysis/{id}/stream", GetHtmlStream);
         return app;
     }
 
@@ -101,4 +103,121 @@ internal static class AnalysisEndpoints
         AnalysisFailedEvent => "AnalysisFailed",
         _ => evt.GetType().Name
     };
+
+    // GET /analysis/{id}/stream  →  text/event-stream (HTML fragments for HTMX SSE)
+    private static async Task GetHtmlStream(
+        string id,
+        HttpContext httpContext,
+        IAnalysisEventSource eventSource,
+        IAnalysisStore store,
+        ViewRenderer viewRenderer)
+    {
+        httpContext.Response.ContentType = "text/event-stream";
+        httpContext.Response.Headers.CacheControl = "no-cache";
+        httpContext.Response.Headers.Connection = "keep-alive";
+
+        var ct = httpContext.RequestAborted;
+
+        async Task SendHtmlAsync(string eventName, string html)
+        {
+            await httpContext.Response.WriteAsync($"event: {eventName}\n", ct).ConfigureAwait(false);
+            // Each line of the HTML body becomes a separate SSE data: line;
+            // the browser EventSource API joins them with \n before HTMX sees the content.
+            foreach (var line in html.Split('\n'))
+            {
+                await httpContext.Response.WriteAsync($"data: {line}\n", ct).ConfigureAwait(false);
+            }
+            await httpContext.Response.WriteAsync("\n", ct).ConfigureAwait(false);
+            await httpContext.Response.Body.FlushAsync(ct).ConfigureAwait(false);
+        }
+
+        try
+        {
+            await foreach (var evt in eventSource.SubscribeAsync(id, ct).ConfigureAwait(false))
+            {
+                switch (evt)
+                {
+                    case AnalysisStartedEvent started:
+                    {
+                        var html = await viewRenderer.RenderPartialAsync(httpContext, "_VideoHeader", started.Video).ConfigureAwait(false);
+                        await SendHtmlAsync("VideoHeader", html).ConfigureAwait(false);
+                        await SendHtmlAsync("Status", "<p aria-busy=\"true\">Extracting transcript…</p>").ConfigureAwait(false);
+                        break;
+                    }
+
+                    case TranscriptExtractedEvent transcript:
+                    {
+                        var html = await viewRenderer.RenderPartialAsync(httpContext, "_TranscriptInfo", transcript).ConfigureAwait(false);
+                        await SendHtmlAsync("TranscriptInfo", html).ConfigureAwait(false);
+                        await SendHtmlAsync("Status", "<p aria-busy=\"true\">Detecting domain…</p>").ConfigureAwait(false);
+                        break;
+                    }
+
+                    case DomainDetectedEvent domain:
+                    {
+                        var html = await viewRenderer.RenderPartialAsync(httpContext, "_DomainBadge", domain.Domain).ConfigureAwait(false);
+                        await SendHtmlAsync("DomainBadge", html).ConfigureAwait(false);
+                        await SendHtmlAsync("Status", "<p aria-busy=\"true\">Summarising and extracting claims…</p>").ConfigureAwait(false);
+                        break;
+                    }
+
+                    case SummaryCompleteEvent summary:
+                    {
+                        var html = await viewRenderer.RenderPartialAsync(httpContext, "_Summary", summary.Summary).ConfigureAwait(false);
+                        await SendHtmlAsync("Summary", html).ConfigureAwait(false);
+                        break;
+                    }
+
+                    case ClaimsExtractedEvent claims:
+                    {
+                        var html = await viewRenderer.RenderPartialAsync(httpContext, "_ClaimsHeader", claims.Claims.Count).ConfigureAwait(false);
+                        await SendHtmlAsync("ClaimsHeader", html).ConfigureAwait(false);
+                        await SendHtmlAsync("Status", "<p aria-busy=\"true\">Verifying claims…</p>").ConfigureAwait(false);
+                        break;
+                    }
+
+                    case ClaimVerifiedEvent verified:
+                    {
+                        var result = store.TryGet(id);
+                        var claim = result?.Claims?.FirstOrDefault(c => c.Id == verified.FactCheck.ClaimId);
+                        if (claim is not null)
+                        {
+                            var model = new ClaimVerdictModel(claim, verified.FactCheck);
+                            var html = await viewRenderer.RenderPartialAsync(httpContext, "_ClaimVerdict", model).ConfigureAwait(false);
+                            await SendHtmlAsync("ClaimVerified", html).ConfigureAwait(false);
+                        }
+                        break;
+                    }
+
+                    case ScoringCompleteEvent scoring:
+                    {
+                        var html = await viewRenderer.RenderPartialAsync(httpContext, "_Score", scoring.Score).ConfigureAwait(false);
+                        await SendHtmlAsync("Score", html).ConfigureAwait(false);
+                        await SendHtmlAsync("Status", "<p aria-busy=\"true\">Generating assessment…</p>").ConfigureAwait(false);
+                        break;
+                    }
+
+                    case AssessmentCompleteEvent assessment:
+                    {
+                        var html = await viewRenderer.RenderPartialAsync(httpContext, "_Assessment", assessment.Assessment).ConfigureAwait(false);
+                        await SendHtmlAsync("Assessment", html).ConfigureAwait(false);
+                        await SendHtmlAsync("Status", "").ConfigureAwait(false);
+                        break;
+                    }
+
+                    case AnalysisFailedEvent failed:
+                    {
+                        var html = await viewRenderer.RenderPartialAsync(httpContext, "_Error", failed.Error).ConfigureAwait(false);
+                        await SendHtmlAsync("Error", html).ConfigureAwait(false);
+                        await SendHtmlAsync("Status", "").ConfigureAwait(false);
+                        break;
+                    }
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Client disconnected — normal termination
+        }
+    }
 }

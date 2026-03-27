@@ -1,0 +1,34 @@
+@model ScoreBreakdown
+
+@{
+    static string Pct(double v) => ((int)(v * 100)).ToString(System.Globalization.CultureInfo.InvariantCulture) + "%";
+    static string ScoreColor(double v) => v >= 0.7 ? "#2d6a2d" : v >= 0.4 ? "#b8860b" : "#8b0000";
+}
+
+<article style="margin-top:1.5rem">
+    <header><strong>Credibility Score — @Pct(Model.AggregateScore)</strong></header>
+
+    <div style="margin-bottom:1rem">
+        <div class="score-bar" style="margin-bottom:.25rem">
+            <div class="score-fill" style="width:@Pct(Model.AggregateScore);background:@ScoreColor(Model.AggregateScore)"></div>
+        </div>
+    </div>
+
+    <dl style="display:grid;grid-template-columns:auto 1fr;gap:.25rem .75rem;font-size:.9rem">
+        <dt>Accuracy</dt>
+        <dd>
+            <div class="score-bar"><div class="score-fill" style="width:@Pct(Model.AccuracyScore)"></div></div>
+        </dd>
+
+        <dt>Source quality</dt>
+        <dd>
+            <div class="score-bar"><div class="score-fill" style="width:@Pct(Model.SourceQualityScore)"></div></div>
+        </dd>
+
+        <dt>Verifiability</dt>
+        <dd>
+            <div class="score-bar"><div class="score-fill" style="width:@Pct(Model.VerifiabilityScore)"></div></div>
+        </dd>
+    </dl>
+    <footer><small style="color:var(--pico-muted-color)">Method: @Model.ScoreMethod</small></footer>
+</article>

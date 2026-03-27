@@ -1,0 +1,32 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Analyse a Video";
+}
+
+<hgroup>
+    <h1>YouTube Fact Checker</h1>
+    <p>Paste a YouTube URL to extract claims, verify them against the web, and get a credibility score.</p>
+</hgroup>
+
+<form method="post">
+    <fieldset role="group">
+        <input asp-for="VideoUrl"
+               type="url"
+               placeholder="https://www.youtube.com/watch?v=..."
+               required
+               autofocus />
+        <button type="submit">Analyse</button>
+    </fieldset>
+    <span asp-validation-for="VideoUrl" style="color:var(--pico-color-red-500)"></span>
+</form>
+
+<details>
+    <summary>What does it check?</summary>
+    <ul>
+        <li>Extracts falsifiable factual claims from the transcript</li>
+        <li>Verifies each claim against the web using AI-powered search</li>
+        <li>Scores the video on accuracy, source quality, and verifiability</li>
+        <li>Generates a watch recommendation (Watch / Watch with Caution / Skip)</li>
+    </ul>
+</details>

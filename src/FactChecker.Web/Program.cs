@@ -10,6 +10,7 @@ using FactChecker.Infrastructure.Storage;
 using FactChecker.Infrastructure.Validation;
 using FactChecker.Infrastructure.YouTube;
 using FactChecker.Web.Endpoints;
+using FactChecker.Web.Services;
 using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -80,6 +81,7 @@ builder.Services.AddTransient<AnalysisPipeline>();
 // ── ASP.NET Core ──────────────────────────────────────────────────────────────
 
 builder.Services.AddRazorPages();
+builder.Services.AddTransient<ViewRenderer>();
 
 builder.Services.AddCors(options =>
 {
