@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@(ViewData["Title"] is string t ? t + " – " : "")YouTube Fact Checker</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@@picocss/pico@@2/css/pico.min.css" />
+    <style>
+        .verdict-supported  { --pico-card-border-color: #2d6a2d; border-left: 4px solid #2d6a2d; }
+        .verdict-refuted    { --pico-card-border-color: #8b0000; border-left: 4px solid #8b0000; }
+        .verdict-partial    { --pico-card-border-color: #b8860b; border-left: 4px solid #b8860b; }
+        .verdict-unverifiable { --pico-card-border-color: #555; border-left: 4px solid #555; }
+        .verdict-notaclaim  { --pico-card-border-color: #888; border-left: 4px solid #888; }
+        .badge { display:inline-block; padding:.2rem .6rem; border-radius:.25rem; font-size:.8rem; font-weight:600; }
+        .badge-supported    { background:#d4edda; color:#155724; }
+        .badge-refuted      { background:#f8d7da; color:#721c24; }
+        .badge-partial      { background:#fff3cd; color:#856404; }
+        .badge-unverifiable { background:#e2e3e5; color:#383d41; }
+        .badge-notaclaim    { background:#f0f0f0; color:#555; }
+        .source-accessible   { color: #155724; }
+        .source-inaccessible { color: #721c24; }
+        .score-bar { background:#e0e0e0; border-radius:.5rem; height:.75rem; overflow:hidden; }
+        .score-fill { height:100%; border-radius:.5rem; background:#2d6a2d; transition:width .4s ease; }
+    </style>
+</head>
+<body>
+    <header class="container">
+        <nav>
+            <ul><li><strong><a href="/" style="text-decoration:none">🔍 YouTube Fact Checker</a></strong></li></ul>
+        </nav>
+    </header>
+    <main class="container">
+        @RenderBody()
+    </main>
+    <footer class="container">
+        <small>Powered by <a href="https://www.anthropic.com" target="_blank" rel="noopener">Anthropic Claude</a></small>
+    </footer>
+    <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js" defer></script>
+    <script src="https://unpkg.com/htmx-ext-sse@2.2.2/sse.js" defer></script>
+</body>
+</html>
