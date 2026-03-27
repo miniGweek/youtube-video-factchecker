@@ -14,10 +14,12 @@ Task 1 (scaffolding + domain models) — **complete** (commit e7fa39b, 2026-03-2
 
 Task 2 (transcript extraction) — **complete** (commit f421d3d, 2026-03-27)
 Task 3 (LLM foundation) — **complete** (commit f421d3d, 2026-03-27)
-Task 4 (LLM pipeline stages) — pending (unblocked — depends on Task 3 ✓)
-Task 5 (fact-check engine) — pending (unblocked — depends on Task 3 ✓)
+Task 4 (LLM pipeline stages) — **complete** (commit 574b8fe, 2026-03-27)
+Task 5 (fact-check engine) — **complete** (commit 574b8fe, 2026-03-27)
 Task 6 (scoring engine) — **complete** (commit f421d3d, 2026-03-27)
-Task 7 (pipeline orchestrator) — pending (blocked on Tasks 4, 5)
-Task 8 (API + SSE) — pending (blocked on Task 7)
+Task 7 (pipeline orchestrator) — **complete** (commit c2402c1, 2026-03-27)
+- 133 tests passing (53 Core, 79 Infrastructure, 1 Web), 0 warnings
+- IAnalysisEventCompleter interface added to Core (not in original scaffold — needed for channel lifecycle)
+Task 8 (API + SSE) — pending (now unblocked)
 Task 9 (web UI) — pending (blocked on Task 8)
 Task 10 (E2E validation spike) — pending (blocked on Task 9)
