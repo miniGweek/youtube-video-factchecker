@@ -130,6 +130,8 @@ secrets/
 # ============================================================
 .claude/
 !.claude/settings.json
+!.claude/commands/
+!.claude/commands/**
 .ai/cache/
 .ai/temp/
 

@@ -1,5 +1,17 @@
 # CLAUDE.md — YouTube Video Fact-Checker
 
+## Codebase Reference
+
+For a file-by-file breakdown of every class, interface, and its role, read this first:
+
+@../CODEBASE.md
+
+## Documentation Maintenance
+
+After creating or modifying any source file, update `CODEBASE.md` to reflect the change.
+Only update the sections affected — do not rewrite unchanged sections.
+If you add a new file, add it to the relevant table. If you rename or delete one, remove it.
+
 ## Memory
 
 Save all memory files to `.ai/memory/` (in the project root) instead of the default Claude memory path.
