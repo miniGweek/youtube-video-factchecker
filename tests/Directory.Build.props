@@ -1,0 +1,8 @@
+<Project>
+  <!-- Relax analyser rules for test assemblies:
+       - CA1707: underscores in test method names are conventional (Given_When_Then).
+       - CA1861: constant array arguments are fine in test helpers. -->
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);CA1707;CA1861</NoWarn>
+  </PropertyGroup>
+</Project>
