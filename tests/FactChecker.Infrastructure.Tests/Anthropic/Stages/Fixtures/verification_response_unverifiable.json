@@ -1,0 +1,11 @@
+{
+  "id": "msg_verify_03",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    { "type": "text", "text": "{\"verdict\":\"Unverifiable\",\"confidence\":\"Low\",\"reasoning\":\"No reliable sources could be found to confirm or refute this specific claim. The claim may be too specific or based on unpublished data.\",\"sources\":[]}" }
+  ],
+  "model": "claude-sonnet-4-20250514",
+  "stop_reason": "end_turn",
+  "usage": { "input_tokens": 460, "output_tokens": 60 }
+}

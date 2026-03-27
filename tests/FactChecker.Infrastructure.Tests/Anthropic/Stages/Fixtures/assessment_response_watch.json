@@ -1,0 +1,9 @@
+{
+  "id": "msg_assess_01",
+  "type": "message",
+  "role": "assistant",
+  "content": [{ "type": "text", "text": "{\"recommendation\":\"Watch\",\"reasoning\":\"The video presents well-supported claims backed by credible research. The majority of fact-checks returned Supported verdicts with accessible sources.\",\"informationDensity\":\"High\",\"caveats\":[]}" }],
+  "model": "claude-haiku-4-5-20251001",
+  "stop_reason": "end_turn",
+  "usage": { "input_tokens": 350, "output_tokens": 60 }
+}

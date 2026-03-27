@@ -1,0 +1,13 @@
+{
+  "id": "msg_verify_01",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    { "type": "tool_use", "id": "toolu_01", "name": "web_search", "input": { "query": "exercise reduces heart disease risk 35 percent" } },
+    { "type": "tool_result", "tool_use_id": "toolu_01", "content": "Search results found multiple studies confirming this figure." },
+    { "type": "text", "text": "{\"verdict\":\"Supported\",\"confidence\":\"High\",\"reasoning\":\"Multiple peer-reviewed studies confirm that 30 minutes of moderate exercise 5 days per week reduces cardiovascular disease risk by approximately 30-35%.\",\"sources\":[{\"url\":\"https://www.who.int/news/item/exercise-heart-study\",\"title\":\"WHO Exercise and Heart Health Study\",\"snippet\":\"Regular moderate physical activity reduces cardiovascular mortality by 35%.\"}]}" }
+  ],
+  "model": "claude-sonnet-4-20250514",
+  "stop_reason": "end_turn",
+  "usage": { "input_tokens": 500, "output_tokens": 120 }
+}

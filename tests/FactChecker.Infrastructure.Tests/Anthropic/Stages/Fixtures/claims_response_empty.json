@@ -1,0 +1,9 @@
+{
+  "id": "msg_claims_02",
+  "type": "message",
+  "role": "assistant",
+  "content": [{ "type": "text", "text": "{\"claims\":[]}" }],
+  "model": "claude-sonnet-4-20250514",
+  "stop_reason": "end_turn",
+  "usage": { "input_tokens": 400, "output_tokens": 10 }
+}
