@@ -1,6 +1,9 @@
-@model int
+@model FactChecker.Web.Models.ClaimsHeaderModel
 
 <h3 style="margin-top:1.5rem;margin-bottom:.5rem">
-    Fact-checking @Model claim@(Model == 1 ? "" : "s")
-    <span aria-busy="true" style="font-size:.85rem;font-weight:normal;margin-left:.5rem">verifying…</span>
+    @(Model.IsComplete ? "Fact-checked" : "Fact-checking") @Model.Count claim@(Model.Count == 1 ? "" : "s")
+    @if (!Model.IsComplete)
+    {
+        <span aria-busy="true" style="font-size:.85rem;font-weight:normal;margin-left:.5rem">verifying…</span>
+    }
 </h3>

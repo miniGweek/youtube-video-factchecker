@@ -170,7 +170,7 @@ internal static class AnalysisEndpoints
 
                     case ClaimsExtractedEvent claims:
                     {
-                        var html = await viewRenderer.RenderPartialAsync(httpContext, "_ClaimsHeader", claims.Claims.Count).ConfigureAwait(false);
+                        var html = await viewRenderer.RenderPartialAsync(httpContext, "_ClaimsHeader", new ClaimsHeaderModel(claims.Claims.Count, false)).ConfigureAwait(false);
                         await SendHtmlAsync("ClaimsHeader", html).ConfigureAwait(false);
                         await SendHtmlAsync("Status", "<p aria-busy=\"true\">Verifying claims…</p>").ConfigureAwait(false);
                         break;
@@ -191,8 +191,12 @@ internal static class AnalysisEndpoints
 
                     case ScoringCompleteEvent scoring:
                     {
-                        var html = await viewRenderer.RenderPartialAsync(httpContext, "_Score", scoring.Score).ConfigureAwait(false);
-                        await SendHtmlAsync("Score", html).ConfigureAwait(false);
+                        var scoreHtml = await viewRenderer.RenderPartialAsync(httpContext, "_Score", scoring.Score).ConfigureAwait(false);
+                        await SendHtmlAsync("Score", scoreHtml).ConfigureAwait(false);
+                        // All claims are now verified — replace the spinning claims header with a done state
+                        var claimCount = store.TryGet(id)?.Claims?.Count ?? 0;
+                        var claimsHtml = await viewRenderer.RenderPartialAsync(httpContext, "_ClaimsHeader", new ClaimsHeaderModel(claimCount, true)).ConfigureAwait(false);
+                        await SendHtmlAsync("ClaimsHeader", claimsHtml).ConfigureAwait(false);
                         await SendHtmlAsync("Status", "<p aria-busy=\"true\">Generating assessment…</p>").ConfigureAwait(false);
                         break;
                     }
