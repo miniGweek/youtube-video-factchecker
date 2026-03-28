@@ -4,10 +4,11 @@ using FactChecker.Core.Events;
 using FactChecker.Core.Interfaces;
 using FactChecker.Core.Models;
 using FactChecker.Core.Options;
+using Microsoft.Extensions.Logging;
 
 namespace FactChecker.Core.Pipeline;
 
-public sealed class AnalysisPipeline
+public sealed partial class AnalysisPipeline
 {
     private readonly IVideoMetadataProvider _metadataProvider;
     private readonly ITranscriptExtractor _transcriptExtractor;
@@ -22,6 +23,7 @@ public sealed class AnalysisPipeline
     private readonly IAnalysisEventCompleter _completer;
     private readonly IAnalysisStore _store;
     private readonly AnalysisOptions _options;
+    private readonly ILogger<AnalysisPipeline> _logger;
 
     public AnalysisPipeline(
         IVideoMetadataProvider metadataProvider,
@@ -36,7 +38,8 @@ public sealed class AnalysisPipeline
         IAnalysisEventSink sink,
         IAnalysisEventCompleter completer,
         IAnalysisStore store,
-        AnalysisOptions options)
+        AnalysisOptions options,
+        ILogger<AnalysisPipeline> logger)
     {
         ArgumentNullException.ThrowIfNull(metadataProvider);
         ArgumentNullException.ThrowIfNull(transcriptExtractor);
@@ -51,6 +54,7 @@ public sealed class AnalysisPipeline
         ArgumentNullException.ThrowIfNull(completer);
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(logger);
 
         _metadataProvider = metadataProvider;
         _transcriptExtractor = transcriptExtractor;
@@ -65,6 +69,7 @@ public sealed class AnalysisPipeline
         _completer = completer;
         _store = store;
         _options = options;
+        _logger = logger;
     }
 
     /// <summary>
@@ -78,6 +83,8 @@ public sealed class AnalysisPipeline
 
         var result = new AnalysisResult(analysisId);
         _store.Add(result);
+
+        LogAnalysisStarted(analysisId, videoUri);
 
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeoutCts.CancelAfter(TimeSpan.FromSeconds(_options.PipelineTimeoutSeconds));
@@ -97,6 +104,7 @@ public sealed class AnalysisPipeline
 
             var transcript = await _transcriptExtractor.ExtractAsync(video.VideoId, linkedCt).ConfigureAwait(false);
             result.SetTranscript(transcript);
+            LogTranscriptExtracted(analysisId, transcript.WordCount, transcript.Quality);
             await _sink.PublishAsync(
                 new TranscriptExtractedEvent(analysisId, DateTimeOffset.UtcNow, transcript.Quality, transcript.WordCount),
                 linkedCt)
@@ -112,6 +120,7 @@ public sealed class AnalysisPipeline
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
+                LogDomainDetectionFailed(ex, analysisId);
                 domain = ContentDomain.General;
             }
 #pragma warning restore CA1031
@@ -175,6 +184,7 @@ public sealed class AnalysisPipeline
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException)
                     {
+                        LogClaimVerificationFailed(ex, analysisId, claim.Id);
                         factCheck = new FactCheck(
                             claim.Id, Verdict.Unverifiable, Confidence.Low,
                             "Verification failed.", []);
@@ -211,9 +221,11 @@ public sealed class AnalysisPipeline
                 await _sink.PublishAsync(
                     new AssessmentCompleteEvent(analysisId, DateTimeOffset.UtcNow, assessment), linkedCt)
                     .ConfigureAwait(false);
+                LogAnalysisCompleted(analysisId);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
+                LogAssessmentFailed(ex, analysisId);
                 result.Complete(); // Complete without assessment
             }
 #pragma warning restore CA1031
@@ -221,6 +233,11 @@ public sealed class AnalysisPipeline
 #pragma warning disable CA1031 // Intentional: pipeline must never throw to the caller
         catch (Exception ex)
         {
+            if (ex is OperationCanceledException)
+                LogPipelineTimeout(ex, analysisId, currentStage);
+            else
+                LogPipelineFailed(ex, analysisId, currentStage);
+
             var message = ex is OperationCanceledException
                 ? "Pipeline timed out or was cancelled."
                 : ex.Message;
@@ -238,4 +255,28 @@ public sealed class AnalysisPipeline
             _completer.Complete(analysisId);
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Analysis {AnalysisId} started for {VideoUri}")]
+    private partial void LogAnalysisStarted(string analysisId, Uri videoUri);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Analysis {AnalysisId} transcript extracted: {WordCount} words, quality={Quality}")]
+    private partial void LogTranscriptExtracted(string analysisId, int wordCount, TranscriptQuality quality);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Analysis {AnalysisId} domain detection failed, defaulting to General")]
+    private partial void LogDomainDetectionFailed(Exception ex, string analysisId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Analysis {AnalysisId} claim {ClaimId} verification failed, marking Unverifiable")]
+    private partial void LogClaimVerificationFailed(Exception ex, string analysisId, string claimId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Analysis {AnalysisId} completed successfully")]
+    private partial void LogAnalysisCompleted(string analysisId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Analysis {AnalysisId} assessment generation failed, completing without assessment")]
+    private partial void LogAssessmentFailed(Exception ex, string analysisId);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Analysis {AnalysisId} pipeline timed out at stage {Stage}")]
+    private partial void LogPipelineTimeout(Exception ex, string analysisId, AnalysisStage stage);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Analysis {AnalysisId} pipeline failed at stage {Stage}")]
+    private partial void LogPipelineFailed(Exception ex, string analysisId, AnalysisStage stage);
 }

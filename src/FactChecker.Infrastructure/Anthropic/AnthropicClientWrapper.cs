@@ -161,7 +161,7 @@ public sealed partial class AnthropicClientWrapper
         return textBlock?.Text ?? string.Empty;
     }
 
-    private static void HandleErrorResponse(HttpStatusCode statusCode, string rawJson)
+    private void HandleErrorResponse(HttpStatusCode statusCode, string rawJson)
     {
         AnthropicErrorResponse? errorBody = null;
         try
@@ -181,10 +181,12 @@ public sealed partial class AnthropicClientWrapper
                        or HttpStatusCode.InternalServerError
                        or HttpStatusCode.ServiceUnavailable)
         {
+            LogTransientApiError((int)statusCode, errorBody?.Error?.Type);
             throw new HttpRequestException(message, inner: null, statusCode);
         }
 
         // Non-transient errors — throw AnthropicException directly (no retry)
+        LogPermanentApiError((int)statusCode, errorBody?.Error?.Type);
         throw new AnthropicException(statusCode, message, errorBody?.Error?.Type);
     }
 
@@ -222,6 +224,12 @@ public sealed partial class AnthropicClientWrapper
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Anthropic API usage: input={InputTokens}, output={OutputTokens}.")]
     private partial void LogApiUsage(int inputTokens, int outputTokens);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Anthropic API {StatusCode} ({ErrorType}) — transient, will retry.")]
+    private partial void LogTransientApiError(int statusCode, string? errorType);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Anthropic API {StatusCode} ({ErrorType}) — non-transient, aborting.")]
+    private partial void LogPermanentApiError(int statusCode, string? errorType);
 }
 
 // ── Anthropic API models ─────────────────────────────────────────────────────

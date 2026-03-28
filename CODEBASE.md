@@ -100,7 +100,7 @@ One record per pipeline stage. All inherit `AnalysisEvent` (base record with `An
 
 ### Pipeline (`Core/Pipeline/`)
 
-**`AnalysisPipeline.cs`** — the top-level orchestrator. `RunAsync(analysisId, videoUri)`:
+**`AnalysisPipeline.cs`** — the top-level orchestrator. Accepts `ILogger<AnalysisPipeline>` and uses source-generated `[LoggerMessage]` methods for structured logging at each stage. `RunAsync(analysisId, videoUri)`:
 
 1. Fetch metadata → emit `AnalysisStartedEvent`
 2. Extract transcript → emit `TranscriptExtractedEvent`
@@ -147,7 +147,7 @@ Implements all Core interfaces. External dependencies: Anthropic SDK (direct HTT
 | File | What it does |
 |------|-------------|
 | `YouTubeMetadataProvider.cs` | Implements `IVideoMetadataProvider`. Uses YoutubeExplode to fetch title, channel, duration, thumbnail |
-| `YouTubeTranscriptExtractor.cs` | Implements `ITranscriptExtractor`. Uses YoutubeExplode to download captions; prefers manual tracks |
+| `YouTubeTranscriptExtractor.cs` | Implements `ITranscriptExtractor`. Uses YoutubeExplode to download captions; prefers manual tracks. Accepts `ILogger<YouTubeTranscriptExtractor>` with source-generated log methods |
 | `YouTubeUrlValidator.cs` | Static utility. `TryParseVideoId(Uri, out string)` — validates YouTube URL formats |
 | `TranscriptNotAvailableException.cs` | Thrown when no caption track exists for a video |
 
@@ -159,6 +159,7 @@ Implements all Core interfaces. External dependencies: Anthropic SDK (direct HTT
 - If JSON parse fails, retries once with a "respond with valid JSON only" nudge
 - `SendAsync<T>()` — sends prompt, deserialises response to `T`
 - `SendWithToolsAsync()` — sends prompt with tool definitions, returns raw JSON
+- Source-generated `[LoggerMessage]` methods log transient vs permanent API errors at Warning/Error level
 
 **`ModelTier.cs`** — `Fast` (Haiku, used for: domain detection, assessment) vs `Standard` (Sonnet, used for: summarisation, claim extraction, claim verification with web search)
 
@@ -210,7 +211,7 @@ Composition root. Wires DI, exposes HTTP surface.
 
 ### Program.cs
 
-Registers all services:
+Configures **Serilog** as the logging provider (`UseSerilog`, reads from `Serilog` config section). Registers all services:
 - `AnalysisOptions` + `AnthropicOptions` from config (env var overrides API key)
 - `IHttpClientFactory` (shared across all HTTP calls)
 - Infrastructure implementations for all Core interfaces
@@ -273,12 +274,17 @@ Minimal API, all routes registered via `MapAnalysisEndpoints()` extension:
 
 ```json
 {
+  "Serilog": {
+    "MinimumLevel": { "Default": "Information", "Override": { "Microsoft": "Warning", "System": "Warning" } },
+    "WriteTo": [{ "Name": "Console", "Args": { "outputTemplate": "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}" } }],
+    "Enrich": [ "FromLogContext" ]
+  },
   "AnalysisOptions": {
     "MaxVideoDurationMinutes": 45,
     "MaxClaimsToVerify": 15,
     "MaxConcurrentVerifications": 4,
     "SourceValidationTimeoutSeconds": 5,
-    "PipelineTimeoutSeconds": 120
+    "PipelineTimeoutSeconds": 600
   },
   "AnthropicOptions": {
     "FastModel": "claude-haiku-4-5-20251001",
@@ -288,7 +294,7 @@ Minimal API, all routes registered via `MapAnalysisEndpoints()` extension:
 }
 ```
 
-API key: set `ANTHROPIC_API_KEY` environment variable (takes precedence over `appsettings.json`).
+API key: set `ANTHROPIC_API_KEY` environment variable (takes precedence over `appsettings.json`). `UserSecretsId` is configured in the Web project for local development.
 
 ---
 

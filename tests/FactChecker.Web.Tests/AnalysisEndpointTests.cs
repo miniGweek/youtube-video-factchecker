@@ -13,6 +13,7 @@ using FactChecker.Infrastructure.Storage;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FactChecker.Web.Tests;
 
@@ -260,7 +261,8 @@ public class AnalysisEndpointTests : IClassFixture<WebApplicationFactory<Program
             sp.GetRequiredService<IAnalysisEventSink>(),
             sp.GetRequiredService<IAnalysisEventCompleter>(),
             sp.GetRequiredService<IAnalysisStore>(),
-            sp.GetRequiredService<AnalysisOptions>());
+            sp.GetRequiredService<AnalysisOptions>(),
+            NullLogger<AnalysisPipeline>.Instance);
 
     private static AnalysisResult BuildCompleteResult(string id)
     {

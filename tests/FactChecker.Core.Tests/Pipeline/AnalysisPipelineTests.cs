@@ -4,6 +4,7 @@ using FactChecker.Core.Interfaces;
 using FactChecker.Core.Models;
 using FactChecker.Core.Options;
 using FactChecker.Core.Pipeline;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FactChecker.Core.Tests.Pipeline;
 
@@ -79,7 +80,8 @@ public class AnalysisPipelineTests
             sink ?? new FakeEventSink(),
             completer ?? new FakeEventCompleter(),
             store ?? new FakeAnalysisStore(),
-            options ?? DefaultOptions());
+            options ?? DefaultOptions(),
+            NullLogger<AnalysisPipeline>.Instance);
     }
 
     // ── Happy path ─────────────────────────────────────────────────────────────

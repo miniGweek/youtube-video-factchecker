@@ -6,8 +6,10 @@ using YoutubeExplode.Videos;
 
 namespace FactChecker.Infrastructure.YouTube;
 
+#pragma warning disable CA1001 // YoutubeClient wraps an IHttpClientFactory-managed HttpClient; the factory owns the handler lifetime
 public sealed class YouTubeMetadataProvider : IVideoMetadataProvider
 {
+#pragma warning restore CA1001
     private readonly YoutubeClient _youtubeClient;
 
     public YouTubeMetadataProvider(IHttpClientFactory httpClientFactory)

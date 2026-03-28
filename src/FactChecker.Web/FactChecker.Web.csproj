@@ -1,14 +1,19 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
     <ProjectReference Include="..\FactChecker.Infrastructure\FactChecker.Infrastructure.csproj" />
     <ProjectReference Include="..\FactChecker.Core\FactChecker.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>8ae15b5b-88bd-4094-931d-04a09b0c34eb</UserSecretsId>
   </PropertyGroup>
 
 </Project>

@@ -131,7 +131,7 @@ GET  /api/analyse/{id}     → 200 (complete) | 202 (running) | 404 (unknown)
     "MaxClaimsToVerify": 15,
     "MaxConcurrentVerifications": 4,
     "SourceValidationTimeoutSeconds": 5,
-    "PipelineTimeoutSeconds": 120
+    "PipelineTimeoutSeconds": 600
   },
   "AnthropicOptions": {
     "FastModel": "claude-haiku-4-5-20251001",

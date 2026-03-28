@@ -32,4 +32,13 @@ Task 9 (web UI) — **complete** (commits c2bff9c + c072142, 2026-03-27)
 - _Layout (Pico CSS + HTMX + SSE ext from CDN), _ViewImports, _ViewStart
 - 145 tests passing (53 Core, 79 Infrastructure, 13 Web), 0 warnings
 
+Post-Task 9 polish — **complete** (uncommitted as of 2026-03-28):
+- Serilog integrated (appsettings.json switched to Serilog section, `UseSerilog()` in Program.cs)
+- Structured logging added to `AnalysisPipeline`, `YouTubeTranscriptExtractor`, `AnthropicClientWrapper` via `[LoggerMessage]` source generation
+- `YoutubeExplode` bumped 6.4.3 → 6.5.7
+- `PipelineTimeoutSeconds` raised 120 → 600 (allows real videos time to complete)
+- `UserSecretsId` added to Web project for local dev API key management
+- `CA1001` pragmas added for `YoutubeClient` wrapper pattern (factory owns handler lifetime)
+- Tests updated: `NullLogger<AnalysisPipeline>.Instance` passed to pipeline constructor in all test helpers
+
 Task 10 (E2E validation spike) — pending (requires real ANTHROPIC_API_KEY + manual run)

@@ -12,8 +12,14 @@ using FactChecker.Infrastructure.YouTube;
 using FactChecker.Web.Endpoints;
 using FactChecker.Web.Services;
 using Microsoft.Extensions.Options;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((ctx, services, cfg) => cfg
+    .ReadFrom.Configuration(ctx.Configuration)
+    .ReadFrom.Services(services)
+    .Enrich.FromLogContext());
 
 // ── Configuration ────────────────────────────────────────────────────────────
 
