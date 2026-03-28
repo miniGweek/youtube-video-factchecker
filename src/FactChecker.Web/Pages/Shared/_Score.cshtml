@@ -1,8 +1,8 @@
 @model ScoreBreakdown
 
 @{
-    static string Pct(double v) => ((int)(v * 100)).ToString(System.Globalization.CultureInfo.InvariantCulture) + "%";
-    static string ScoreColor(double v) => v >= 0.7 ? "#2d6a2d" : v >= 0.4 ? "#b8860b" : "#8b0000";
+    static string Pct(double v) => ((int)v).ToString(System.Globalization.CultureInfo.InvariantCulture) + "%";
+    static string ScoreColor(double v) => v >= 70 ? "#2d6a2d" : v >= 40 ? "#b8860b" : "#8b0000";
 }
 
 <article style="margin-top:1.5rem">

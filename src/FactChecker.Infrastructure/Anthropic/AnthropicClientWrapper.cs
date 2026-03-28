@@ -118,6 +118,80 @@ public sealed partial class AnthropicClientWrapper
         return result;
     }
 
+    /// <summary>
+    /// Sends a prompt with Anthropic's built-in server-side web search tool enabled.
+    /// The API executes searches internally and returns tool_use + tool_result + text blocks
+    /// all in a single response (stop_reason: end_turn).
+    /// </summary>
+    public async Task<string> SendWithBuiltinWebSearchAsync(
+        string systemPrompt,
+        string userMessage,
+        ModelTier tier,
+        int maxTokens = DefaultMaxTokens,
+        CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(systemPrompt);
+        ArgumentNullException.ThrowIfNull(userMessage);
+
+        var model = ResolveModel(tier);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
+        var result = await _retryPipeline.ExecuteAsync(
+            async token => await SendRawWebSearchAsync(systemPrompt, userMessage, model, maxTokens, token)
+                .ConfigureAwait(false),
+            ct).ConfigureAwait(false);
+
+        LogModelResponse(model, sw.ElapsedMilliseconds);
+        return result;
+    }
+
+    private async Task<string> SendRawWebSearchAsync(
+        string systemPrompt,
+        string userMessage,
+        string model,
+        int maxTokens,
+        CancellationToken ct)
+    {
+        // Built-in tools use a different shape from custom tools (type + name, no description/input_schema).
+        // Build the request JSON directly to avoid fighting with the AnthropicRequest serialization model.
+        var requestNode = new System.Text.Json.Nodes.JsonObject
+        {
+            ["model"] = model,
+            ["max_tokens"] = maxTokens,
+            ["system"] = systemPrompt,
+            ["messages"] = new System.Text.Json.Nodes.JsonArray(
+                new System.Text.Json.Nodes.JsonObject
+                {
+                    ["role"] = "user",
+                    ["content"] = userMessage
+                }),
+            ["tools"] = new System.Text.Json.Nodes.JsonArray(
+                new System.Text.Json.Nodes.JsonObject
+                {
+                    ["type"] = "web_search_20250305",
+                    ["name"] = "web_search"
+                })
+        };
+
+        using var content = new System.Net.Http.StringContent(
+            requestNode.ToJsonString(), System.Text.Encoding.UTF8, "application/json");
+
+        using var httpClient = _httpClientFactory.CreateClient(nameof(AnthropicClientWrapper));
+        httpClient.DefaultRequestHeaders.Add("x-api-key", _options.ApiKey);
+        httpClient.DefaultRequestHeaders.Add("anthropic-version", AnthropicVersion);
+        httpClient.DefaultRequestHeaders.Add("anthropic-beta", "web-search-2025-03-05");
+
+        using var httpResponse = await httpClient.PostAsync(new Uri(AnthropicApiUrl), content, ct)
+            .ConfigureAwait(false);
+
+        var rawJson = await httpResponse.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+
+        if (!httpResponse.IsSuccessStatusCode)
+            HandleErrorResponse(httpResponse.StatusCode, rawJson);
+
+        return rawJson;
+    }
+
     private async Task<string> SendRawAsync(
         string systemPrompt,
         string userMessage,

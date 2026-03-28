@@ -9,19 +9,6 @@ namespace FactChecker.Infrastructure.Anthropic.Stages;
 
 public sealed class AnthropicClaimVerifier : IClaimVerifier
 {
-    private static readonly AnthropicTool WebSearchTool = new(
-        Name: "web_search",
-        Description: "Search the web for up-to-date information to verify factual claims.",
-        InputSchema: new
-        {
-            type = "object",
-            properties = new
-            {
-                query = new { type = "string", description = "The search query" }
-            },
-            required = new[] { "query" }
-        });
-
     private readonly AnthropicClientWrapper _client;
 
     public AnthropicClaimVerifier(AnthropicClientWrapper client)
@@ -38,23 +25,14 @@ public sealed class AnthropicClaimVerifier : IClaimVerifier
 
         var userMessage = BuildUserMessage(claim, summary, domain);
 
-        // Try tool-use first; fall back to plain completion if tool-use response is complex
-        string rawResponse;
-        try
-        {
-            rawResponse = await _client.SendWithToolsAsync(
-                StagePrompts.ClaimVerification,
-                userMessage,
-                [WebSearchTool],
-                ModelTier.Standard,
-                maxTokens: 2048,
-                ct).ConfigureAwait(false);
-        }
-        catch (HttpRequestException)
-        {
-            // Propagate transient errors — pipeline will mark claim as Unverifiable
-            throw;
-        }
+        // Use Anthropic's built-in server-side web search. The API executes searches
+        // internally and returns tool_use + tool_result + text blocks in one response.
+        string rawResponse = await _client.SendWithBuiltinWebSearchAsync(
+            StagePrompts.ClaimVerification,
+            userMessage,
+            ModelTier.Standard,
+            maxTokens: 2048,
+            ct).ConfigureAwait(false);
 
         return ParseVerificationResponse(claim.Id, rawResponse);
     }
