@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-03-28T00:00:00Z",
+  "lastUpdated": "2026-03-29T00:00:00Z",
   "taskSets": [
     {
       "id": "000",
@@ -26,7 +26,7 @@
       "file": ".ai/tasks/001-multi-provider.md",
       "status": "active",
       "tasks": [
-        { "id": "011", "name": "ILlmClient Abstraction + Shared Types", "status": "pending", "commit": null, "date": null, "tests": null, "notes": null },
+        { "id": "011", "name": "ILlmClient Abstraction + Shared Types", "status": "complete", "commit": null, "date": "2026-03-29", "tests": 155, "notes": "Placed in LlmProviders/Common/ (not Shared/) — 'Shared' is a reserved VB keyword, CA1716 fires. SearchResultSource uses Uri Url (not string) for type safety. StageModelOptions moved to Core/Options/ as planned." },
         { "id": "012", "name": "Gemini Provider Client", "status": "pending", "commit": null, "date": null, "tests": null, "notes": null },
         { "id": "013", "name": "Anthropic Provider Refactor", "status": "pending", "commit": null, "date": null, "tests": null, "notes": null },
         { "id": "014", "name": "Provider-Agnostic Stage Refactor", "status": "pending", "commit": null, "date": null, "tests": null, "notes": null },

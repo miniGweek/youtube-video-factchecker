@@ -3,7 +3,7 @@
 A web app that takes a YouTube URL and produces: a structured video summary, per-claim fact-checks with source citations, and a watch-worthiness score. Single-instance, stateless (in-memory), no auth required.
 
 **Stack:** C# / .NET 9, ASP.NET Core, Razor Pages, HTMX, Pico CSS, Anthropic Claude API, YoutubeExplode.
-**Tests:** 145 passing (xUnit). All warnings treated as errors.
+**Tests:** 155 passing (xUnit). All warnings treated as errors.
 
 ---
 
@@ -63,6 +63,7 @@ Pure C#. No NuGet dependencies. Everything here is domain logic only.
 | `ContentDomain` | News, Science, Finance, Health, General |
 | `TranscriptQuality` | Auto, Manual |
 | `WatchRecommendation` | Watch, WatchWithCaution, Skip |
+| `ModelTier` | Fast, Standard, Premium — selects cost/capability tier for LLM calls; provider implementations map each tier to a concrete model string |
 
 ### Interfaces (`Core/Interfaces/`)
 
@@ -136,6 +137,13 @@ The pipeline **never throws** — all errors become `AnalysisFailedEvent`. Indiv
 - `SourceValidationTimeoutSeconds` (5)
 - `PipelineTimeoutSeconds` (120)
 
+**`StageModelOptions.cs`** — configures which `ModelTier` each pipeline stage uses; tunable via `appsettings.json` without code changes:
+- `DomainDetection` → Fast
+- `Summarisation` → Fast
+- `ClaimExtraction` → Standard
+- `ClaimVerification` → Premium
+- `Assessment` → Fast
+
 ---
 
 ## FactChecker.Infrastructure
@@ -150,6 +158,20 @@ Implements all Core interfaces. External dependencies: Anthropic SDK (direct HTT
 | `YouTubeTranscriptExtractor.cs` | Implements `ITranscriptExtractor`. Uses YoutubeExplode to download captions; prefers manual tracks. Accepts `ILogger<YouTubeTranscriptExtractor>` with source-generated log methods |
 | `YouTubeUrlValidator.cs` | Static utility. `TryParseVideoId(Uri, out string)` — validates YouTube URL formats |
 | `TranscriptNotAvailableException.cs` | Thrown when no caption track exists for a video |
+
+### LLM Provider Abstraction (`Infrastructure/LlmProviders/Common/`)
+
+Provider-agnostic types shared by all LLM provider implementations. No provider-specific dependencies.
+
+| File | What it does |
+|------|-------------|
+| `ILlmClient.cs` | Interface with `CompleteAsync` and `CompleteWithSearchAsync`. Stages depend only on this — never on provider types. |
+| `LlmRequest.cs` | Record: `StageId`, `ModelTier`, `SystemPrompt`, `UserPrompt` |
+| `LlmResponse.cs` | Record: `Content`, `TokenUsage` — result of a standard completion |
+| `LlmSearchResponse.cs` | Record: `Content`, `IReadOnlyList<SearchResultSource>`, `TokenUsage` — result of a search-enabled completion |
+| `SearchResultSource.cs` | Record: `Uri Url`, `Title`, `Snippet` — provider-agnostic search result |
+| `TokenUsage.cs` | Record: `InputTokens`, `OutputTokens` |
+| `StructuredOutputParser.cs` | Static utility. `Parse<T>()` strips markdown code fences and deserialises JSON from LLM response text |
 
 ### Anthropic (`Infrastructure/Anthropic/`)
 
@@ -326,7 +348,7 @@ Background: AnalysisPipeline.RunAsync()
 | Project | Count | Approach |
 |---------|-------|---------|
 | `FactChecker.Core.Tests` | 53 | Unit tests. No mocks. Hand-crafted inputs for scoring, state-machine, pipeline (mocked interfaces). |
-| `FactChecker.Infrastructure.Tests` | 79 | Unit tests for LLM stages use **recorded API response fixtures** (JSON files) — no live API calls. Channel transport, URL validator, HTTP source validator tested directly. |
+| `FactChecker.Infrastructure.Tests` | 89 | Unit tests for LLM stages use **recorded API response fixtures** (JSON files) — no live API calls. Channel transport, URL validator, HTTP source validator tested directly. `LlmProviders/Common/StructuredOutputParserTests.cs` — 10 tests covering clean JSON, markdown fences, whitespace, error cases. |
 | `FactChecker.Web.Tests` | 13 | Integration tests via `WebApplicationFactory`. Tests all three API endpoints. |
 
 ---
