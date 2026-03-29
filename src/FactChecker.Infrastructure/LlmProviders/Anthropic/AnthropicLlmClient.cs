@@ -8,6 +8,7 @@ using FactChecker.Infrastructure.Options;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Polly;
+using Polly.CircuitBreaker;
 using Polly.Retry;
 using AnthropicException = FactChecker.Infrastructure.Anthropic.AnthropicException;
 
@@ -22,7 +23,6 @@ public sealed partial class AnthropicLlmClient : ILlmClient
 {
     private const string AnthropicApiUrl = "https://api.anthropic.com/v1/messages";
     private const string AnthropicVersion = "2023-06-01";
-    private const int DefaultMaxTokens = 4096;
 
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly AnthropicOptions _options;
@@ -53,7 +53,7 @@ public sealed partial class AnthropicLlmClient : ILlmClient
         var sw = Stopwatch.StartNew();
 
         var rawJson = await _retryPipeline.ExecuteAsync(
-            async token => await SendRawAsync(request.SystemPrompt, request.UserPrompt, model, DefaultMaxTokens, token)
+            async token => await SendRawAsync(request.SystemPrompt, request.UserPrompt, model, request.MaxTokens, token)
                 .ConfigureAwait(false),
             ct).ConfigureAwait(false);
 
@@ -80,15 +80,16 @@ public sealed partial class AnthropicLlmClient : ILlmClient
         var sw = Stopwatch.StartNew();
 
         var rawJson = await _retryPipeline.ExecuteAsync(
-            async token => await SendRawWebSearchAsync(request.SystemPrompt, request.UserPrompt, model, DefaultMaxTokens, token)
+            async token => await SendRawWebSearchAsync(request.SystemPrompt, request.UserPrompt, model, request.MaxTokens, token)
                 .ConfigureAwait(false),
             ct).ConfigureAwait(false);
 
         sw.Stop();
 
-        var textContent = AnthropicWebSearchParser.ExtractTextContent(rawJson);
-        var sources = AnthropicWebSearchParser.ExtractSources(rawJson);
-        var usage = AnthropicWebSearchParser.ExtractUsage(rawJson);
+        using var doc = JsonDocument.Parse(rawJson);
+        var textContent = AnthropicWebSearchParser.ExtractTextContent(doc);
+        var sources = AnthropicWebSearchParser.ExtractSources(doc);
+        var usage = AnthropicWebSearchParser.ExtractUsage(doc);
 
         LogSearchResponse(request.StageId, model, sources.Count, usage.InputTokens, usage.OutputTokens, sw.ElapsedMilliseconds);
 
@@ -152,17 +153,19 @@ public sealed partial class AnthropicLlmClient : ILlmClient
         CancellationToken ct,
         bool includeWebSearchBeta = false)
     {
-        using var content = new StringContent(
-            requestBody.ToJsonString(), System.Text.Encoding.UTF8, "application/json");
-
         using var httpClient = _httpClientFactory.CreateClient(nameof(AnthropicLlmClient));
-        httpClient.DefaultRequestHeaders.Add("x-api-key", _options.ApiKey);
-        httpClient.DefaultRequestHeaders.Add("anthropic-version", AnthropicVersion);
+
+        using var requestMessage = new HttpRequestMessage(HttpMethod.Post, new Uri(AnthropicApiUrl));
+        requestMessage.Headers.Add("x-api-key", _options.ApiKey);
+        requestMessage.Headers.Add("anthropic-version", AnthropicVersion);
 
         if (includeWebSearchBeta)
-            httpClient.DefaultRequestHeaders.Add("anthropic-beta", "web-search-2025-03-05");
+            requestMessage.Headers.Add("anthropic-beta", "web-search-2025-03-05");
 
-        using var httpResponse = await httpClient.PostAsync(new Uri(AnthropicApiUrl), content, ct)
+        requestMessage.Content = new StringContent(
+            requestBody.ToJsonString(), System.Text.Encoding.UTF8, "application/json");
+
+        using var httpResponse = await httpClient.SendAsync(requestMessage, ct)
             .ConfigureAwait(false);
 
         var rawJson = await httpResponse.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
@@ -261,6 +264,16 @@ public sealed partial class AnthropicLlmClient : ILlmClient
                 Delay = TimeSpan.FromSeconds(1),
                 BackoffType = DelayBackoffType.Exponential,
                 UseJitter = true
+            })
+            .AddCircuitBreaker(new CircuitBreakerStrategyOptions
+            {
+                ShouldHandle = new PredicateBuilder()
+                    .Handle<HttpRequestException>()
+                    .Handle<TimeoutException>(),
+                FailureRatio = 0.5,
+                SamplingDuration = TimeSpan.FromSeconds(30),
+                MinimumThroughput = 5,
+                BreakDuration = TimeSpan.FromSeconds(30),
             })
             .Build();
     }

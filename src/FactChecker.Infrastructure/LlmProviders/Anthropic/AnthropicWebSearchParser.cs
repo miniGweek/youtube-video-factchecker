@@ -88,6 +88,31 @@ public static class AnthropicWebSearchParser
         return new TokenUsage(0, 0);
     }
 
+    internal static string ExtractTextContent(JsonDocument doc)
+    {
+        ArgumentNullException.ThrowIfNull(doc);
+        return ExtractLastTextBlock(doc);
+    }
+
+    internal static IReadOnlyList<SearchResultSource> ExtractSources(JsonDocument doc)
+    {
+        ArgumentNullException.ThrowIfNull(doc);
+        return ExtractSourcesFromDocument(doc);
+    }
+
+    internal static TokenUsage ExtractUsage(JsonDocument doc)
+    {
+        ArgumentNullException.ThrowIfNull(doc);
+        var root = doc.RootElement;
+        if (root.TryGetProperty("usage", out var usage))
+        {
+            var input = usage.TryGetProperty("input_tokens", out var inp) ? inp.GetInt32() : 0;
+            var output = usage.TryGetProperty("output_tokens", out var outp) ? outp.GetInt32() : 0;
+            return new TokenUsage(input, output);
+        }
+        return new TokenUsage(0, 0);
+    }
+
     private static List<SearchResultSource> ExtractSourcesFromDocument(JsonDocument doc)
     {
         var root = doc.RootElement;
