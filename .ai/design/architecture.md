@@ -1,9 +1,10 @@
 # YouTube Video Fact-Checker — Architecture Document
 
-**Version:** 1.0
-**Date:** 2026-03-27
+**Version:** 1.1
+**Date:** 2026-03-29
 **Status:** Approved (PRDE Phase 3 — Design)
-**Supersedes:** Any earlier architecture drafts
+**Supersedes:** v1.0 (2026-03-27)
+**Change summary:** Added multi-provider LLM support (Gemini + Anthropic), three-tier model routing, per-stage provider configuration. No changes to Core interfaces, domain models, pipeline, scoring, API, or UI.
 
 ---
 
@@ -25,7 +26,9 @@ User pastes URL → Extract transcript → Detect domain → Summarise + Extract
 |---|---|
 | API-first architecture | Enables future mobile clients consuming the same JSON API |
 | Thin Razor + HTMX web layer | Minimal frontend complexity; disposable when a richer client is built |
-| Per-stage LLM model selection | Cost optimisation — Haiku for cheap stages, Sonnet for critical ones |
+| Multi-provider LLM support | Switch between Anthropic and Gemini (or future providers) via config; cost and quality flexibility |
+| Three-tier model routing | Fast / Standard / Premium per stage; right-size model cost to task complexity |
+| Per-stage model tier assignment | Configurable via `StageModelOptions`; tune without code changes |
 | Deterministic scoring (not LLM) | Transparency and reproducibility (Rule R7) |
 | Channel-based event transport | In-process, no external dependencies; sufficient for single-instance |
 | Pluggable transcript extraction | De-risks YouTube API changes; swap implementations without touching pipeline |
@@ -36,7 +39,8 @@ User pastes URL → Extract transcript → Detect domain → Summarise + Extract
 |---|---|---|
 | Backend | C# / ASP.NET Core 9 | Team strength; strong async/pipeline support |
 | Web UI (v1) | Razor Pages + HTMX + Pico CSS | Thin disposable layer; no JS build pipeline |
-| LLM Provider | Anthropic Claude API (Sonnet + Haiku) | Web search tool use for fact verification |
+| LLM Provider (default) | Google Gemini API (2.5 Flash, 3 Flash, 2.5 Pro) | 10-20x cheaper than Anthropic; Google Search grounding for fact verification |
+| LLM Provider (alternate) | Anthropic Claude API (Sonnet + Haiku) | Higher reasoning quality; fallback if Gemini quality insufficient |
 | Transcript Extraction | YoutubeExplode (NuGet) | Mature .NET library for YouTube data |
 | Deployment | Docker, single container | Simple; single host for friends-scale |
 
@@ -48,7 +52,7 @@ User pastes URL → Extract transcript → Detect domain → Summarise + Extract
 youtube-fact-checker/
 ├── src/
 │   ├── FactChecker.Core/              # Domain models, interfaces, pipeline, scoring
-│   ├── FactChecker.Infrastructure/    # External integrations (YouTube, Anthropic)
+│   ├── FactChecker.Infrastructure/    # External integrations (YouTube, LLM providers, validation)
 │   └── FactChecker.Web/              # ASP.NET Core host, API, Razor Pages, DI
 ├── tests/
 │   ├── FactChecker.Core.Tests/
@@ -56,7 +60,7 @@ youtube-fact-checker/
 │   └── FactChecker.Web.Tests/
 ├── .ai/
 │   ├── design/                        # This document, ADRs
-│   └── tasks/                         # Task contracts
+│   └── tasks/                         # Task contracts (numbered: 000-name.md)
 ├── Directory.Build.props              # Shared build settings, strict analysis
 ├── docker-compose.yml
 ├── Dockerfile
@@ -71,8 +75,8 @@ Web → Core
 ```
 
 - **Core** has zero external package dependencies. Contains domain models, interfaces, pipeline orchestration, scoring logic, and event definitions.
-- **Infrastructure** implements Core's interfaces. Contains Anthropic SDK integration, YouTube transcript extraction, HTTP source validation.
-- **Web** is the composition root. Wires DI, hosts API endpoints, serves Razor pages.
+- **Infrastructure** implements Core's interfaces. Contains LLM provider clients (Gemini, Anthropic), provider-agnostic stage implementations, YouTube transcript extraction, HTTP source validation.
+- **Web** is the composition root. Wires DI (including LLM provider selection), hosts API endpoints, serves Razor pages.
 
 ---
 
@@ -192,6 +196,8 @@ public enum AnalysisStage
 ## 4. Interfaces (Core Contracts)
 
 All interfaces live in Core. Infrastructure provides implementations. Pipeline depends only on these abstractions.
+
+**These interfaces are unchanged by the multi-provider work.** The pipeline consumes these; it never knows which LLM provider is behind them.
 
 ```csharp
 // -- Transcript --
@@ -358,28 +364,134 @@ YouTubeMetadataProvider : IVideoMetadataProvider
 
 Pluggable via the interface — implementations can be swapped if YoutubeExplode breaks.
 
-### 7.2 LLM Integration
+### 7.2 LLM Integration — Multi-Provider Architecture
+
+The LLM layer is structured in three tiers: a **provider client abstraction** (`ILlmClient`), **provider-specific implementations** (Gemini, Anthropic), and **provider-agnostic stage implementations** that contain prompts and response parsing.
 
 ```
-AnthropicClientWrapper
-  - Shared HttpClient via IHttpClientFactory
-  - Retry with exponential backoff (Polly)
-  - Structured JSON output parsing
-  - Model tier routing: Fast → Haiku, Standard → Sonnet
-
-AnthropicDomainDetector : IDomainDetector          (Fast)
-AnthropicSummariser : ISummariser                  (Standard)
-AnthropicClaimExtractor : IClaimExtractor           (Standard)
-AnthropicClaimVerifier : IClaimVerifier             (Standard, web_search tool)
-AnthropicAssessmentGenerator : IAssessmentGenerator  (Fast)
+Infrastructure/
+  LlmProviders/
+    Shared/
+      ILlmClient.cs                 ← Provider-agnostic client interface
+      ModelTier.cs                   ← Fast, Standard, Premium
+      LlmRequest.cs                 ← Common request type
+      LlmResponse.cs                ← Common response types
+      LlmSearchResponse.cs
+      SearchResultSource.cs
+      TokenUsage.cs
+    Anthropic/
+      AnthropicLlmClient.cs         ← ILlmClient implementation
+      AnthropicOptions.cs
+      AnthropicWebSearchParser.cs    ← Extracts Sources from tool_use responses
+    Gemini/
+      GeminiLlmClient.cs            ← ILlmClient implementation
+      GeminiOptions.cs
+      GeminiGroundingParser.cs       ← Extracts Sources from groundingMetadata
+    Stages/
+      DomainDetectorStage.cs         ← IDomainDetector (uses ILlmClient)
+      SummariserStage.cs             ← ISummariser (uses ILlmClient)
+      ClaimExtractorStage.cs         ← IClaimExtractor (uses ILlmClient)
+      ClaimVerifierStage.cs          ← IClaimVerifier (uses ILlmClient.CompleteWithSearchAsync)
+      AssessmentGeneratorStage.cs    ← IAssessmentGenerator (uses ILlmClient)
 ```
 
-**Model tier mapping (configurable via AnthropicOptions):**
+#### 7.2.1 Provider Client Interface
 
-| Tier | Default Model | Used For |
-|---|---|---|
-| Fast | claude-haiku-4-5-20251001 | Domain detection, assessment generation |
-| Standard | claude-sonnet-4-20250514 | Summarisation, claim extraction, fact verification |
+```csharp
+// Lives in Infrastructure — not Core (this is an implementation concern)
+public interface ILlmClient
+{
+    Task<LlmResponse> CompleteAsync(
+        LlmRequest request, CancellationToken ct = default);
+
+    Task<LlmSearchResponse> CompleteWithSearchAsync(
+        LlmRequest request, CancellationToken ct = default);
+}
+
+public enum ModelTier { Fast, Standard, Premium }
+
+public record LlmRequest(
+    string StageId,
+    ModelTier Tier,
+    string SystemPrompt,
+    string UserPrompt);
+
+public record LlmResponse(
+    string Content,
+    TokenUsage Usage);
+
+public record LlmSearchResponse(
+    string Content,
+    IReadOnlyList<SearchResultSource> Sources,
+    TokenUsage Usage);
+
+public record SearchResultSource(
+    string Url,
+    string Title,
+    string Snippet);
+
+public record TokenUsage(
+    int InputTokens,
+    int OutputTokens);
+```
+
+#### 7.2.2 Provider Implementations
+
+**Gemini (`GeminiLlmClient`):**
+- Maps model tiers to configurable model strings (default: Fast → `gemini-2.5-flash`, Standard → `gemini-3-flash`, Premium → `gemini-2.5-pro`)
+- `CompleteAsync` sends `generateContent` requests to the Gemini API
+- `CompleteWithSearchAsync` enables Google Search grounding via `tools: [{ google_search: {} }]`
+- `GeminiGroundingParser` extracts `SearchResultSource` records from `groundingMetadata.groundingChunks` and maps `groundingSupports` segments to snippets
+- Retry with exponential backoff on 429/500/503
+- Structured JSON output parsing (handles markdown fences, whitespace)
+
+**Anthropic (`AnthropicLlmClient`):**
+- Maps model tiers to configurable model strings (default: Fast → `claude-haiku-4-5-20251001`, Standard → `claude-sonnet-4-20250514`, Premium → `claude-sonnet-4-20250514`)
+- `CompleteAsync` sends standard messages API requests
+- `CompleteWithSearchAsync` enables web search via `tools: [{ type: "web_search_20250305", name: "web_search" }]`
+- `AnthropicWebSearchParser` extracts `SearchResultSource` records from interleaved `tool_use`/`tool_result` content blocks
+- Retry with exponential backoff on 429/500/503
+
+#### 7.2.3 Stage Implementations (Provider-Agnostic)
+
+Each stage implements a Core interface and depends only on `ILlmClient`. The stage owns the **prompt** and the **response parsing**. The client owns the **transport**.
+
+Prompts are identical across providers — both Gemini and Anthropic consume the same natural language instructions and return JSON. Provider differences (how search is triggered, how results are structured) are fully encapsulated in the `ILlmClient` implementations.
+
+Each stage reads its model tier from `StageModelOptions` (configurable, not hard-coded).
+
+#### 7.2.4 Model Tier Mapping
+
+**Gemini (default provider):**
+
+| Tier | Default Model | Cost (input/output per 1M tokens) | Used For |
+|---|---|---|---|
+| Fast | gemini-2.5-flash | $0.30 / $2.50 | Domain detection, summarisation, assessment |
+| Standard | gemini-3-flash | $0.50 / $3.00 | Claim extraction |
+| Premium | gemini-2.5-pro | $1.25 / $10.00 | Claim verification (with Google Search grounding) |
+
+**Anthropic (alternate provider):**
+
+| Tier | Default Model | Cost (input/output per 1M tokens) | Used For |
+|---|---|---|---|
+| Fast | claude-haiku-4-5-20251001 | $1.00 / $5.00 | Domain detection, assessment |
+| Standard | claude-sonnet-4-20250514 | $3.00 / $15.00 | Summarisation, claim extraction, verification |
+| Premium | claude-sonnet-4-20250514 | $3.00 / $15.00 | (Same as Standard — no tier between Sonnet and Opus) |
+
+#### 7.2.5 Per-Stage Tier Assignment
+
+```csharp
+public class StageModelOptions
+{
+    public ModelTier DomainDetection { get; set; } = ModelTier.Fast;
+    public ModelTier Summarisation { get; set; } = ModelTier.Fast;
+    public ModelTier ClaimExtraction { get; set; } = ModelTier.Standard;
+    public ModelTier ClaimVerification { get; set; } = ModelTier.Premium;
+    public ModelTier Assessment { get; set; } = ModelTier.Fast;
+}
+```
+
+Tunable via `appsettings.json` without code changes.
 
 ### 7.3 Source Validation
 
@@ -517,16 +629,73 @@ public class AnalysisOptions
     public int PipelineTimeoutSeconds { get; set; } = 120;
 }
 
+public class StageModelOptions
+{
+    public ModelTier DomainDetection { get; set; } = ModelTier.Fast;
+    public ModelTier Summarisation { get; set; } = ModelTier.Fast;
+    public ModelTier ClaimExtraction { get; set; } = ModelTier.Standard;
+    public ModelTier ClaimVerification { get; set; } = ModelTier.Premium;
+    public ModelTier Assessment { get; set; } = ModelTier.Fast;
+}
+
+public class GeminiOptions
+{
+    public string ApiKey { get; set; }                  // From env var: GEMINI_API_KEY
+    public string FastModel { get; set; } = "gemini-2.5-flash";
+    public string StandardModel { get; set; } = "gemini-3-flash";
+    public string PremiumModel { get; set; } = "gemini-2.5-pro";
+    public bool EnableSearchGrounding { get; set; } = true;
+    public int MaxRetries { get; set; } = 2;
+}
+
 public class AnthropicOptions
 {
-    public string ApiKey { get; set; }              // From secrets manager / env var
+    public string ApiKey { get; set; }                  // From env var: ANTHROPIC_API_KEY
     public string FastModel { get; set; } = "claude-haiku-4-5-20251001";
     public string StandardModel { get; set; } = "claude-sonnet-4-20250514";
+    public string PremiumModel { get; set; } = "claude-sonnet-4-20250514";
     public int MaxRetries { get; set; } = 2;
 }
 ```
 
-Bound via ASP.NET Core Options pattern. API key **never** in appsettings — use environment variables or user secrets.
+**appsettings.json shape:**
+
+```json
+{
+  "LlmProvider": "Gemini",
+  "AnalysisOptions": {
+    "MaxVideoDurationMinutes": 45,
+    "MaxClaimsToVerify": 15,
+    "MaxConcurrentVerifications": 4,
+    "SourceValidationTimeoutSeconds": 5,
+    "PipelineTimeoutSeconds": 120
+  },
+  "StageModelOptions": {
+    "DomainDetection": "Fast",
+    "Summarisation": "Fast",
+    "ClaimExtraction": "Standard",
+    "ClaimVerification": "Premium",
+    "Assessment": "Fast"
+  },
+  "GeminiOptions": {
+    "FastModel": "gemini-2.5-flash",
+    "StandardModel": "gemini-3-flash",
+    "PremiumModel": "gemini-2.5-pro",
+    "EnableSearchGrounding": true,
+    "MaxRetries": 2
+  },
+  "AnthropicOptions": {
+    "FastModel": "claude-haiku-4-5-20251001",
+    "StandardModel": "claude-sonnet-4-20250514",
+    "PremiumModel": "claude-sonnet-4-20250514",
+    "MaxRetries": 2
+  }
+}
+```
+
+API keys **never** in appsettings — use environment variables (`GEMINI_API_KEY`, `ANTHROPIC_API_KEY`) or user secrets.
+
+**Switching providers:** Change `"LlmProvider": "Gemini"` to `"LlmProvider": "Anthropic"`. No code changes required.
 
 ---
 
@@ -556,11 +725,14 @@ Bound via ASP.NET Core Options pattern. API key **never** in appsettings — use
 | Domain models | Immutability, validation, state transitions | Unit tests, no mocks |
 | Scoring engine | All scoring paths, edge cases | Unit tests, hand-crafted inputs |
 | Pipeline orchestrator | Stage ordering, parallelism, error propagation, events | Unit tests, mocked interfaces |
-| LLM integrations | Prompt parsing, error handling, retry | Unit tests, recorded API responses |
+| LLM provider clients | Request building, response parsing, retry logic | Unit tests, recorded API responses per provider |
+| Gemini grounding parser | Source extraction from `groundingMetadata` | Unit tests, recorded Gemini response fixtures |
+| Anthropic search parser | Source extraction from `tool_use`/`tool_result` blocks | Unit tests, recorded Anthropic response fixtures |
+| Stage implementations | Prompt → response parsing, error handling | Unit tests, mock `ILlmClient` |
 | Transcript extraction | Happy path + errors | Integration tests (manual runs) |
 | API endpoints | Validation, SSE format, status codes | Integration tests, `WebApplicationFactory` |
 | Web UI | Thin layer | Manual verification in v1 |
-| End-to-end quality | Full pipeline, 5 real videos | Manual evaluation with rubric (Spike 1) |
+| End-to-end quality | Full pipeline, real videos, per-provider comparison | Manual evaluation with rubric |
 
 ---
 
@@ -588,21 +760,39 @@ Bound via ASP.NET Core Options pattern. API key **never** in appsettings — use
 | User accounts / auth | Add auth middleware; API endpoints gain identity context |
 | Multi-language support | Extend domain detection; adjust prompts |
 | Longer video support | Chunking strategy in transcript processing; token management |
+| Additional LLM providers | Implement `ILlmClient`; register in DI |
+| Per-stage provider mixing | Extend DI to resolve different `ILlmClient` per stage |
 
 ---
 
 ## 16. Estimated Cost Per Analysis
 
-| Stage | Model | Est. Input Tokens | Est. Output Tokens |
-|---|---|---|---|
-| Domain detection | Haiku | ~500 | ~50 |
-| Summarisation | Sonnet | ~8,000 | ~500 |
-| Claim extraction | Sonnet | ~8,000 | ~1,000 |
-| Fact verification (×10-15) | Sonnet | ~1,500 each | ~500 each |
-| Assessment | Haiku | ~3,000 | ~500 |
+### Gemini (default provider)
 
-**Estimated total:** ~40-50K input tokens, ~10K output tokens per analysis.
-**Estimated cost:** ~$0.15-0.25 per analysis at current Sonnet/Haiku pricing.
+| Stage | Model | Tier | Est. Input Tokens | Est. Output Tokens | Est. Cost |
+|---|---|---|---|---|---|
+| Domain detection | gemini-2.5-flash | Fast | ~500 | ~50 | ~$0.0003 |
+| Summarisation | gemini-2.5-flash | Fast | ~8,000 | ~500 | ~$0.004 |
+| Claim extraction | gemini-3-flash | Standard | ~8,000 | ~1,000 | ~$0.007 |
+| Fact verification (×12) | gemini-2.5-pro | Premium | ~2,000 each | ~500 each | ~$0.09 |
+| Assessment | gemini-2.5-flash | Fast | ~3,000 | ~500 | ~$0.002 |
+
+**Estimated total:** ~$0.08-0.12 per analysis.
+**Google Search grounding:** 1,500 free requests/day on Pro tier. At 12 claims/video, supports ~125 videos/day at zero search cost.
+**$5 budget:** ~40-60 analyses.
+
+### Anthropic (alternate provider)
+
+| Stage | Model | Tier | Est. Input Tokens | Est. Output Tokens | Est. Cost |
+|---|---|---|---|---|---|
+| Domain detection | claude-haiku-4-5 | Fast | ~500 | ~50 | ~$0.001 |
+| Summarisation | claude-sonnet-4 | Standard | ~8,000 | ~500 | ~$0.03 |
+| Claim extraction | claude-sonnet-4 | Standard | ~8,000 | ~1,000 | ~$0.04 |
+| Fact verification (×12) | claude-sonnet-4 | Standard | ~3,500 each | ~500 each | ~$0.60-0.85 |
+| Assessment | claude-haiku-4-5 | Fast | ~3,000 | ~500 | ~$0.005 |
+
+**Estimated total:** ~$0.65-1.00 per analysis.
+**$5 budget:** ~5-7 analyses.
 
 ---
 
