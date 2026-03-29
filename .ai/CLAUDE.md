@@ -198,6 +198,25 @@ Tasks 4, 5 can execute in parallel after Task 3.
 - **System.Text.Json** with strict settings for all serialisation.
 - **System.Threading.Channels** for in-process event transport.
 
+## Git Commit Convention
+
+Two identities are used in this repo:
+
+| Who | Author name | Author email |
+|-----|-------------|--------------|
+| Claude Code | `Rahul Sarkar via Claude Code` | `rahul.sarkar-claudecode@gmail.com` |
+| Human (Rahul) | `Rahul Sarkar` | `dedlok@gmail.com` |
+
+**When Claude Code makes a commit**, always override the author explicitly:
+
+```bash
+git -c user.name="Rahul Sarkar via Claude Code" \
+    -c user.email="rahul.sarkar-claudecode@gmail.com" \
+    commit -m "..."
+```
+
+Human commits use the global git config (`dedlok@gmail.com`) unchanged.
+
 ## What NOT to Do
 
 - Don't add persistence/database — v1 is stateless, in-memory only.
