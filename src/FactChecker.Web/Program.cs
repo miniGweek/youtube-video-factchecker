@@ -2,11 +2,8 @@ using FactChecker.Core.Interfaces;
 using FactChecker.Core.Options;
 using FactChecker.Core.Pipeline;
 using FactChecker.Core.Scoring;
-using FactChecker.Infrastructure.Anthropic;
 using FactChecker.Infrastructure.Events;
-using FactChecker.Infrastructure.LlmProviders.Common;
-using FactChecker.Infrastructure.LlmProviders.Stages;
-using FactChecker.Infrastructure.Options;
+using FactChecker.Infrastructure.LlmProviders;
 using FactChecker.Infrastructure.Storage;
 using FactChecker.Infrastructure.Validation;
 using FactChecker.Infrastructure.YouTube;
@@ -27,16 +24,6 @@ builder.Host.UseSerilog((ctx, services, cfg) => cfg
 builder.Services.AddOptions<AnalysisOptions>()
     .BindConfiguration("AnalysisOptions");
 
-builder.Services.AddOptions<AnthropicOptions>()
-    .BindConfiguration("AnthropicOptions")
-    .PostConfigure(o =>
-    {
-        // API key from environment variable takes precedence over appsettings
-        var fromEnv = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");
-        if (!string.IsNullOrWhiteSpace(fromEnv))
-            o.ApiKey = fromEnv;
-    });
-
 // Expose AnalysisOptions as a plain class (AnalysisPipeline doesn't use IOptions<T>)
 builder.Services.AddSingleton(sp =>
     sp.GetRequiredService<IOptions<AnalysisOptions>>().Value);
@@ -50,23 +37,9 @@ builder.Services.AddHttpClient();
 builder.Services.AddTransient<IVideoMetadataProvider, YouTubeMetadataProvider>();
 builder.Services.AddTransient<ITranscriptExtractor, YouTubeTranscriptExtractor>();
 
-builder.Services.AddOptions<StageModelOptions>()
-    .BindConfiguration("StageModelOptions");
+// ── Infrastructure — LLM Provider + Stages ───────────────────────────────────
 
-// ── Infrastructure — LLM Provider (Anthropic via temporary adapter) ──────────
-
-builder.Services.AddTransient<AnthropicClientWrapper>();
-#pragma warning disable CS0618 // AnthropicLlmClientAdapter is intentionally used here as a temporary bridge
-builder.Services.AddTransient<ILlmClient, AnthropicLlmClientAdapter>();
-#pragma warning restore CS0618
-
-// ── Infrastructure — LLM Stages (provider-agnostic) ──────────────────────────
-
-builder.Services.AddTransient<IDomainDetector, DomainDetectorStage>();
-builder.Services.AddTransient<ISummariser, SummariserStage>();
-builder.Services.AddTransient<IClaimExtractor, ClaimExtractorStage>();
-builder.Services.AddTransient<IClaimVerifier, ClaimVerifierStage>();
-builder.Services.AddTransient<IAssessmentGenerator, AssessmentGeneratorStage>();
+builder.Services.AddLlmProvider(builder.Configuration);
 
 // ── Infrastructure — Validation ───────────────────────────────────────────────
 

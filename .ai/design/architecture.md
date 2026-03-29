@@ -371,17 +371,16 @@ The LLM layer is structured in three tiers: a **provider client abstraction** (`
 ```
 Infrastructure/
   LlmProviders/
-    Shared/
+    Common/
       ILlmClient.cs                 ← Provider-agnostic client interface
-      ModelTier.cs                   ← Fast, Standard, Premium
       LlmRequest.cs                 ← Common request type
       LlmResponse.cs                ← Common response types
       LlmSearchResponse.cs
       SearchResultSource.cs
       TokenUsage.cs
+      StructuredOutputParser.cs      ← Shared JSON parsing utility
     Anthropic/
       AnthropicLlmClient.cs         ← ILlmClient implementation
-      AnthropicOptions.cs
       AnthropicWebSearchParser.cs    ← Extracts Sources from tool_use responses
     Gemini/
       GeminiLlmClient.cs            ← ILlmClient implementation
@@ -393,7 +392,10 @@ Infrastructure/
       ClaimExtractorStage.cs         ← IClaimExtractor (uses ILlmClient)
       ClaimVerifierStage.cs          ← IClaimVerifier (uses ILlmClient.CompleteWithSearchAsync)
       AssessmentGeneratorStage.cs    ← IAssessmentGenerator (uses ILlmClient)
+    ServiceCollectionExtensions.cs   ← AddLlmProvider() DI registration
 ```
+
+Note: `ModelTier` enum lives in `Core/Enums/ModelTier.cs` (not in LlmProviders). `AnthropicOptions` lives in `Infrastructure/Options/`. `GeminiOptions` lives in `LlmProviders/Gemini/`.
 
 #### 7.2.1 Provider Client Interface
 
@@ -408,13 +410,14 @@ public interface ILlmClient
         LlmRequest request, CancellationToken ct = default);
 }
 
-public enum ModelTier { Fast, Standard, Premium }
+public enum ModelTier { Fast, Standard, Premium }  // Lives in Core/Enums/
 
 public record LlmRequest(
     string StageId,
     ModelTier Tier,
     string SystemPrompt,
-    string UserPrompt);
+    string UserPrompt,
+    int MaxTokens = 4096);
 
 public record LlmResponse(
     string Content,
@@ -426,7 +429,7 @@ public record LlmSearchResponse(
     TokenUsage Usage);
 
 public record SearchResultSource(
-    string Url,
+    Uri Url,
     string Title,
     string Snippet);
 

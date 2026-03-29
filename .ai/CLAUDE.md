@@ -78,7 +78,7 @@ src/
   FactChecker.Infrastructure/
     YouTube/          # YouTubeTranscriptExtractor, YouTubeMetadataProvider
     LlmProviders/
-      Shared/         # ILlmClient, ModelTier, LlmRequest/Response, StructuredOutputParser
+      Common/         # ILlmClient, LlmRequest/Response, StructuredOutputParser
       Gemini/         # GeminiLlmClient, GeminiGroundingParser, GeminiOptions
       Anthropic/      # AnthropicLlmClient, AnthropicWebSearchParser, AnthropicOptions
       Stages/         # Provider-agnostic: DomainDetectorStage, SummariserStage, ClaimVerifierStage, etc.
