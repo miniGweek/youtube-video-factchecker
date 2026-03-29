@@ -8,7 +8,7 @@ public class GeminiOptions
 {
     public string ApiKey { get; set; } = string.Empty;
     public string FastModel { get; set; } = "gemini-2.5-flash";
-    public string StandardModel { get; set; } = "gemini-3-flash";
+    public string StandardModel { get; set; } = "gemini-2.5-flash";
     public string PremiumModel { get; set; } = "gemini-2.5-pro";
     public bool EnableSearchGrounding { get; set; } = true;
     public int MaxRetries { get; set; } = 2;

@@ -24,7 +24,7 @@ public sealed class GeminiLlmClientTests
         HttpMessageHandler handler,
         int maxRetries = 0,
         string fastModel = "gemini-2.5-flash",
-        string standardModel = "gemini-3-flash",
+        string standardModel = "gemini-2.5-flash",
         string premiumModel = "gemini-2.5-pro")
     {
         var factory = new FakeHttpClientFactory(handler);
@@ -134,7 +134,7 @@ public sealed class GeminiLlmClientTests
 
     [Theory]
     [InlineData(ModelTier.Fast, "gemini-2.5-flash")]
-    [InlineData(ModelTier.Standard, "gemini-3-flash")]
+    [InlineData(ModelTier.Standard, "gemini-2.5-flash")]
     [InlineData(ModelTier.Premium, "gemini-2.5-pro")]
     public async Task CompleteAsync_UsesCorrectModelForTier(ModelTier tier, string expectedModel)
     {

@@ -180,7 +180,7 @@ Google Gemini API provider implementation. Direct HTTP calls to the Gemini REST 
 | File | What it does |
 |------|-------------|
 | `GeminiLlmClient.cs` | Implements `ILlmClient`. `CompleteAsync` sends `generateContent` POST to Gemini API. `CompleteWithSearchAsync` adds `tools: [{ google_search: {} }]`. Maps `ModelTier` to model strings via `GeminiOptions`. Polly retry with exponential backoff on 429/500/503. Source-generated `[LoggerMessage]` methods log model, token counts, latency, grounding source count. |
-| `GeminiOptions.cs` | Config: `ApiKey` (env var only), `FastModel` (gemini-2.5-flash), `StandardModel` (gemini-3-flash), `PremiumModel` (gemini-2.5-pro), `EnableSearchGrounding`, `MaxRetries` |
+| `GeminiOptions.cs` | Config: `ApiKey` (env var only), `FastModel` (gemini-2.5-flash), `StandardModel` (gemini-2.5-flash), `PremiumModel` (gemini-2.5-pro), `EnableSearchGrounding`, `MaxRetries` |
 | `GeminiGroundingParser.cs` | Static class. Extracts `SearchResultSource` records from `groundingMetadata.groundingChunks`. Maps `groundingSupports` segments to snippets. Returns empty list when no grounding metadata. |
 | `GeminiApiException.cs` | Thrown for non-transient Gemini API errors (4xx other than 429) |
 
@@ -333,7 +333,7 @@ Minimal API, all routes registered via `MapAnalysisEndpoints()` extension:
   },
   "GeminiOptions": {
     "FastModel": "gemini-2.5-flash",
-    "StandardModel": "gemini-3-flash",
+    "StandardModel": "gemini-2.5-flash",
     "PremiumModel": "gemini-2.5-pro",
     "EnableSearchGrounding": true,
     "MaxRetries": 2

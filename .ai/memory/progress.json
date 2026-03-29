@@ -1,5 +1,21 @@
 {
-  "lastUpdated": "2026-03-29T18:00:00Z",
+  "lastUpdated": "2026-03-30T09:30:00Z",
+  "fixes": [
+    {
+      "id": "fix-001",
+      "description": "gemini-3-flash (non-existent) and gemini-2.0-flash (deprecated, EOL June 2026) replaced with gemini-2.5-flash as the Standard model tier. Fast and Standard tiers now both use gemini-2.5-flash; no valid mid-tier Gemini model exists.",
+      "date": "2026-03-30",
+      "commit": "TBD",
+      "filesChanged": [
+        "src/FactChecker.Infrastructure/LlmProviders/Gemini/GeminiOptions.cs",
+        "src/FactChecker.Web/appsettings.json",
+        "tests/FactChecker.Infrastructure.Tests/LlmProviders/Gemini/GeminiLlmClientTests.cs",
+        "CODEBASE.md",
+        ".ai/design/architecture.md"
+      ],
+      "architectureImpact": false
+    }
+  ],
   "taskSets": [
     {
       "id": "000",

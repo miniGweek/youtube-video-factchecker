@@ -441,7 +441,7 @@ public record TokenUsage(
 #### 7.2.2 Provider Implementations
 
 **Gemini (`GeminiLlmClient`):**
-- Maps model tiers to configurable model strings (default: Fast → `gemini-2.5-flash`, Standard → `gemini-3-flash`, Premium → `gemini-2.5-pro`)
+- Maps model tiers to configurable model strings (default: Fast → `gemini-2.5-flash`, Standard → `gemini-2.5-flash`, Premium → `gemini-2.5-pro`)
 - `CompleteAsync` sends `generateContent` requests to the Gemini API
 - `CompleteWithSearchAsync` enables Google Search grounding via `tools: [{ google_search: {} }]`
 - `GeminiGroundingParser` extracts `SearchResultSource` records from `groundingMetadata.groundingChunks` and maps `groundingSupports` segments to snippets
@@ -470,7 +470,7 @@ Each stage reads its model tier from `StageModelOptions` (configurable, not hard
 | Tier | Default Model | Cost (input/output per 1M tokens) | Used For |
 |---|---|---|---|
 | Fast | gemini-2.5-flash | $0.30 / $2.50 | Domain detection, summarisation, assessment |
-| Standard | gemini-3-flash | $0.50 / $3.00 | Claim extraction |
+| Standard | gemini-2.5-flash | $0.30 / $2.50 | Claim extraction |
 | Premium | gemini-2.5-pro | $1.25 / $10.00 | Claim verification (with Google Search grounding) |
 
 **Anthropic (alternate provider):**
@@ -645,7 +645,7 @@ public class GeminiOptions
 {
     public string ApiKey { get; set; }                  // From env var: GEMINI_API_KEY
     public string FastModel { get; set; } = "gemini-2.5-flash";
-    public string StandardModel { get; set; } = "gemini-3-flash";
+    public string StandardModel { get; set; } = "gemini-2.5-flash";
     public string PremiumModel { get; set; } = "gemini-2.5-pro";
     public bool EnableSearchGrounding { get; set; } = true;
     public int MaxRetries { get; set; } = 2;
@@ -682,7 +682,7 @@ public class AnthropicOptions
   },
   "GeminiOptions": {
     "FastModel": "gemini-2.5-flash",
-    "StandardModel": "gemini-3-flash",
+    "StandardModel": "gemini-2.5-flash",
     "PremiumModel": "gemini-2.5-pro",
     "EnableSearchGrounding": true,
     "MaxRetries": 2
@@ -776,7 +776,7 @@ API keys **never** in appsettings — use environment variables (`GEMINI_API_KEY
 |---|---|---|---|---|---|
 | Domain detection | gemini-2.5-flash | Fast | ~500 | ~50 | ~$0.0003 |
 | Summarisation | gemini-2.5-flash | Fast | ~8,000 | ~500 | ~$0.004 |
-| Claim extraction | gemini-3-flash | Standard | ~8,000 | ~1,000 | ~$0.007 |
+| Claim extraction | gemini-2.5-flash | Standard | ~8,000 | ~1,000 | ~$0.005 |
 | Fact verification (×12) | gemini-2.5-pro | Premium | ~2,000 each | ~500 each | ~$0.09 |
 | Assessment | gemini-2.5-flash | Fast | ~3,000 | ~500 | ~$0.002 |
 
