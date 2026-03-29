@@ -173,6 +173,17 @@ Provider-agnostic types shared by all LLM provider implementations. No provider-
 | `TokenUsage.cs` | Record: `InputTokens`, `OutputTokens` |
 | `StructuredOutputParser.cs` | Static utility. `Parse<T>()` strips markdown code fences and deserialises JSON from LLM response text |
 
+### Gemini (`Infrastructure/LlmProviders/Gemini/`)
+
+Google Gemini API provider implementation. Direct HTTP calls to the Gemini REST API (no Google Cloud SDK).
+
+| File | What it does |
+|------|-------------|
+| `GeminiLlmClient.cs` | Implements `ILlmClient`. `CompleteAsync` sends `generateContent` POST to Gemini API. `CompleteWithSearchAsync` adds `tools: [{ google_search: {} }]`. Maps `ModelTier` to model strings via `GeminiOptions`. Polly retry with exponential backoff on 429/500/503. Source-generated `[LoggerMessage]` methods log model, token counts, latency, grounding source count. |
+| `GeminiOptions.cs` | Config: `ApiKey` (env var only), `FastModel` (gemini-2.5-flash), `StandardModel` (gemini-3-flash), `PremiumModel` (gemini-2.5-pro), `EnableSearchGrounding`, `MaxRetries` |
+| `GeminiGroundingParser.cs` | Static class. Extracts `SearchResultSource` records from `groundingMetadata.groundingChunks`. Maps `groundingSupports` segments to snippets. Returns empty list when no grounding metadata. |
+| `GeminiApiException.cs` | Thrown for non-transient Gemini API errors (4xx other than 429) |
+
 ### Anthropic (`Infrastructure/Anthropic/`)
 
 **`AnthropicClientWrapper.cs`** — shared HTTP client for all LLM calls:
@@ -348,7 +359,7 @@ Background: AnalysisPipeline.RunAsync()
 | Project | Count | Approach |
 |---------|-------|---------|
 | `FactChecker.Core.Tests` | 53 | Unit tests. No mocks. Hand-crafted inputs for scoring, state-machine, pipeline (mocked interfaces). |
-| `FactChecker.Infrastructure.Tests` | 89 | Unit tests for LLM stages use **recorded API response fixtures** (JSON files) — no live API calls. Channel transport, URL validator, HTTP source validator tested directly. `LlmProviders/Common/StructuredOutputParserTests.cs` — 10 tests covering clean JSON, markdown fences, whitespace, error cases. |
+| `FactChecker.Infrastructure.Tests` | 114 | Unit tests for LLM stages use **recorded API response fixtures** (JSON files) — no live API calls. Channel transport, URL validator, HTTP source validator tested directly. `LlmProviders/Common/StructuredOutputParserTests.cs` — 10 tests covering clean JSON, markdown fences, whitespace, error cases. `LlmProviders/Gemini/GeminiLlmClientTests.cs` — 18 tests covering CompleteAsync, CompleteWithSearchAsync, model tier routing, error handling, retry, cancellation. `LlmProviders/Gemini/GeminiGroundingParserTests.cs` — 7 tests covering multiple/single/no/partial grounding, zero chunks, empty candidates. |
 | `FactChecker.Web.Tests` | 13 | Integration tests via `WebApplicationFactory`. Tests all three API endpoints. |
 
 ---

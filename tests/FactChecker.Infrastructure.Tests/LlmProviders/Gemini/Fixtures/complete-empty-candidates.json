@@ -1,0 +1,9 @@
+{
+  "candidates": [],
+  "usageMetadata": {
+    "promptTokenCount": 100,
+    "candidatesTokenCount": 0,
+    "totalTokenCount": 100
+  },
+  "modelVersion": "gemini-2.5-flash"
+}

@@ -1,0 +1,48 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\"verdict\": \"Supported\", \"confidence\": \"Medium\", \"reasoning\": \"Partially grounded response.\"}"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "groundingMetadata": {
+        "groundingChunks": [
+          {
+            "web": {
+              "uri": "https://example.com/valid-source",
+              "title": "Valid Source"
+            }
+          },
+          {
+            "notWeb": {
+              "data": "some non-web chunk"
+            }
+          }
+        ],
+        "groundingSupports": [
+          {
+            "segment": {
+              "startIndex": 0,
+              "endIndex": 30,
+              "text": "Partially grounded response."
+            },
+            "groundingChunkIndices": [0],
+            "confidenceScores": [0.85]
+          }
+        ],
+        "webSearchQueries": ["partial grounding query"]
+      }
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 250,
+    "candidatesTokenCount": 60,
+    "totalTokenCount": 310
+  },
+  "modelVersion": "gemini-2.5-pro"
+}

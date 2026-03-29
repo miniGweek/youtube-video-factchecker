@@ -1,0 +1,67 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\"verdict\": \"Supported\", \"confidence\": \"High\", \"reasoning\": \"Multiple sources confirm this claim.\"}"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "groundingMetadata": {
+        "searchEntryPoint": {
+          "renderedContent": "<style>...</style><div>...</div>"
+        },
+        "groundingChunks": [
+          {
+            "web": {
+              "uri": "https://example.com/article-1",
+              "title": "Article One - Scientific Evidence"
+            }
+          },
+          {
+            "web": {
+              "uri": "https://example.org/article-2",
+              "title": "Article Two - Research Findings"
+            }
+          },
+          {
+            "web": {
+              "uri": "https://example.net/article-3",
+              "title": "Article Three - Expert Analysis"
+            }
+          }
+        ],
+        "groundingSupports": [
+          {
+            "segment": {
+              "startIndex": 0,
+              "endIndex": 50,
+              "text": "Multiple sources confirm this claim."
+            },
+            "groundingChunkIndices": [0, 1],
+            "confidenceScores": [0.95, 0.88]
+          },
+          {
+            "segment": {
+              "startIndex": 51,
+              "endIndex": 100,
+              "text": "Expert analysis further supports the finding."
+            },
+            "groundingChunkIndices": [2],
+            "confidenceScores": [0.92]
+          }
+        ],
+        "webSearchQueries": ["scientific evidence claim verification"]
+      }
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 500,
+    "candidatesTokenCount": 150,
+    "totalTokenCount": 650
+  },
+  "modelVersion": "gemini-2.5-pro"
+}
