@@ -3,7 +3,7 @@
 A web app that takes a YouTube URL and produces: a structured video summary, per-claim fact-checks with source citations, and a watch-worthiness score. Single-instance, stateless (in-memory), no auth required.
 
 **Stack:** C# / .NET 9, ASP.NET Core, Razor Pages, HTMX, Pico CSS, Anthropic Claude API, YoutubeExplode.
-**Tests:** 155 passing (xUnit). All warnings treated as errors.
+**Tests:** 182 passing (xUnit). All warnings treated as errors.
 
 ---
 
@@ -234,6 +234,7 @@ Uses `System.Threading.Channels`: one `Channel<AnalysisEvent>` per analysis ID s
 - `ApiKey` — overridable by `ANTHROPIC_API_KEY` env var (env takes precedence)
 - `FastModel` — `claude-haiku-4-5-20251001`
 - `StandardModel` — `claude-sonnet-4-20250514`
+- `PremiumModel` — `claude-sonnet-4-20250514`
 - `MaxRetries` — 2
 
 ---
