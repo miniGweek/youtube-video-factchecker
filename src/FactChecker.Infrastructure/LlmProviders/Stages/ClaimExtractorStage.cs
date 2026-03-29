@@ -2,18 +2,26 @@ using System.Text.Json.Serialization;
 using FactChecker.Core.Enums;
 using FactChecker.Core.Interfaces;
 using FactChecker.Core.Models;
-using FactChecker.Infrastructure.Anthropic.Prompts;
+using FactChecker.Core.Options;
+using FactChecker.Infrastructure.LlmProviders.Common;
+using FactChecker.Infrastructure.LlmProviders.Stages.Prompts;
+using Microsoft.Extensions.Options;
 
-namespace FactChecker.Infrastructure.Anthropic.Stages;
+namespace FactChecker.Infrastructure.LlmProviders.Stages;
 
-public sealed class AnthropicClaimExtractor : IClaimExtractor
+public sealed class ClaimExtractorStage : IClaimExtractor
 {
-    private readonly AnthropicClientWrapper _client;
+    private const string StageId = "ClaimExtraction";
 
-    public AnthropicClaimExtractor(AnthropicClientWrapper client)
+    private readonly ILlmClient _client;
+    private readonly StageModelOptions _options;
+
+    public ClaimExtractorStage(ILlmClient client, IOptions<StageModelOptions> options)
     {
         ArgumentNullException.ThrowIfNull(client);
+        ArgumentNullException.ThrowIfNull(options);
         _client = client;
+        _options = options.Value;
     }
 
     public async Task<IReadOnlyList<Claim>> ExtractAsync(
@@ -26,14 +34,17 @@ public sealed class AnthropicClaimExtractor : IClaimExtractor
 
         var userMessage = $"Domain: {domain}\n\nTranscript:\n{transcript}";
 
-        var response = await _client.SendAsync<ClaimExtractionResponse>(
-            systemPrompt,
-            userMessage,
-            ModelTier.Standard,
-            maxTokens: 2048,
-            ct).ConfigureAwait(false);
+        var request = new LlmRequest(
+            StageId: StageId,
+            Tier: _options.ClaimExtraction,
+            SystemPrompt: systemPrompt,
+            UserPrompt: userMessage);
 
-        return response.Claims
+        var response = await _client.CompleteAsync(request, ct).ConfigureAwait(false);
+
+        var parsed = StructuredOutputParser.Parse<ClaimExtractionResponse>(response.Content);
+
+        return parsed.Claims
             .Take(maxClaims)
             .Select(c => new Claim(
                 Id: c.Id,

@@ -1,9 +1,0 @@
-{
-  "id": "msg_claims_01",
-  "type": "message",
-  "role": "assistant",
-  "content": [{ "type": "text", "text": "{\"claims\":[{\"id\":\"claim-01\",\"text\":\"30 minutes of moderate exercise 5 days a week reduces heart disease risk by 35%\",\"context\":\"The host cites a 2023 WHO study showing regular moderate exercise dramatically cuts cardiovascular risk.\",\"importance\":5},{\"id\":\"claim-02\",\"text\":\"Resistance training lowers LDL cholesterol by an average of 10%\",\"context\":\"Citing a meta-analysis of 40 studies, the video claims weight training improves cholesterol profiles.\",\"importance\":3}]}" }],
-  "model": "claude-sonnet-4-20250514",
-  "stop_reason": "end_turn",
-  "usage": { "input_tokens": 900, "output_tokens": 120 }
-}

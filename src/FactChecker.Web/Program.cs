@@ -3,8 +3,9 @@ using FactChecker.Core.Options;
 using FactChecker.Core.Pipeline;
 using FactChecker.Core.Scoring;
 using FactChecker.Infrastructure.Anthropic;
-using FactChecker.Infrastructure.Anthropic.Stages;
 using FactChecker.Infrastructure.Events;
+using FactChecker.Infrastructure.LlmProviders.Common;
+using FactChecker.Infrastructure.LlmProviders.Stages;
 using FactChecker.Infrastructure.Options;
 using FactChecker.Infrastructure.Storage;
 using FactChecker.Infrastructure.Validation;
@@ -49,14 +50,21 @@ builder.Services.AddHttpClient();
 builder.Services.AddTransient<IVideoMetadataProvider, YouTubeMetadataProvider>();
 builder.Services.AddTransient<ITranscriptExtractor, YouTubeTranscriptExtractor>();
 
-// ── Infrastructure — Anthropic ────────────────────────────────────────────────
+builder.Services.AddOptions<StageModelOptions>()
+    .BindConfiguration("StageModelOptions");
+
+// ── Infrastructure — LLM Provider (Anthropic via temporary adapter) ──────────
 
 builder.Services.AddTransient<AnthropicClientWrapper>();
-builder.Services.AddTransient<IDomainDetector, AnthropicDomainDetector>();
-builder.Services.AddTransient<ISummariser, AnthropicSummariser>();
-builder.Services.AddTransient<IClaimExtractor, AnthropicClaimExtractor>();
-builder.Services.AddTransient<IClaimVerifier, AnthropicClaimVerifier>();
-builder.Services.AddTransient<IAssessmentGenerator, AnthropicAssessmentGenerator>();
+builder.Services.AddTransient<ILlmClient, AnthropicLlmClientAdapter>();
+
+// ── Infrastructure — LLM Stages (provider-agnostic) ──────────────────────────
+
+builder.Services.AddTransient<IDomainDetector, DomainDetectorStage>();
+builder.Services.AddTransient<ISummariser, SummariserStage>();
+builder.Services.AddTransient<IClaimExtractor, ClaimExtractorStage>();
+builder.Services.AddTransient<IClaimVerifier, ClaimVerifierStage>();
+builder.Services.AddTransient<IAssessmentGenerator, AssessmentGeneratorStage>();
 
 // ── Infrastructure — Validation ───────────────────────────────────────────────
 

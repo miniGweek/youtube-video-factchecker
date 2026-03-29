@@ -202,17 +202,21 @@ Google Gemini API provider implementation. Direct HTTP calls to the Gemini REST 
 
 **`AnthropicException.cs`** — thrown for non-transient API errors (4xx other than 429)
 
-**`StagePrompts.cs`** (`Anthropic/Prompts/`) — all prompt templates in one file as string constants
+**`AnthropicLlmClientAdapter.cs`** — temporary adapter wrapping `AnthropicClientWrapper` to implement `ILlmClient`. Bridges old Anthropic infrastructure to new provider-agnostic stages until `AnthropicLlmClient` is implemented in Task 013.
 
-**LLM stage implementations** (`Anthropic/Stages/`):
+### LLM Stage Implementations (`Infrastructure/LlmProviders/Stages/`)
 
-| File | Interface | Model | What it does |
-|------|-----------|-------|-------------|
-| `AnthropicDomainDetector.cs` | `IDomainDetector` | Fast | Single prompt, returns `ContentDomain` |
-| `AnthropicSummariser.cs` | `ISummariser` | Standard | Returns structured `Summary` JSON |
-| `AnthropicClaimExtractor.cs` | `IClaimExtractor` | Standard | Returns list of `Claim` JSON objects |
-| `AnthropicClaimVerifier.cs` | `IClaimVerifier` | Standard | Uses web search tool to look up claims; returns `FactCheck` with sources |
-| `AnthropicAssessmentGenerator.cs` | `IAssessmentGenerator` | Fast | Returns `Assessment` JSON with watch recommendation |
+Provider-agnostic stage implementations. Each stage depends only on `ILlmClient` and `StageModelOptions` — no Anthropic or Gemini imports.
+
+| File | Interface | Default Tier | What it does |
+|------|-----------|-------------|-------------|
+| `DomainDetectorStage.cs` | `IDomainDetector` | Fast | Truncates transcript to 1000 words, classifies `ContentDomain` |
+| `SummariserStage.cs` | `ISummariser` | Fast | Returns structured `Summary` with thesis and key points |
+| `ClaimExtractorStage.cs` | `IClaimExtractor` | Standard | Extracts list of `Claim` with importance scores clamped to 1-5 |
+| `ClaimVerifierStage.cs` | `IClaimVerifier` | Premium | Uses `CompleteWithSearchAsync`; maps `SearchResultSource` to domain `Source` records |
+| `AssessmentGeneratorStage.cs` | `IAssessmentGenerator` | Fast | Returns `Assessment` with watch recommendation |
+
+**`StagePrompts.cs`** (`LlmProviders/Stages/Prompts/`) — all prompt templates in one file as string constants. Provider-agnostic.
 
 ### Events (`Infrastructure/Events/`)
 

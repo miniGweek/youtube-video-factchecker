@@ -1,8 +1,9 @@
-namespace FactChecker.Infrastructure.Anthropic.Prompts;
+namespace FactChecker.Infrastructure.LlmProviders.Stages.Prompts;
 
 /// <summary>
 /// System prompts for each LLM pipeline stage.
 /// All prompts instruct the model to respond in valid JSON matching the stage's schema.
+/// Provider-agnostic — identical prompts work with both Gemini and Anthropic.
 /// </summary>
 internal static class StagePrompts
 {
@@ -111,7 +112,7 @@ internal static class StagePrompts
         """;
 
     public const string ClaimVerification = """
-        You are a fact-checker with access to web search. Verify the provided claim using the web_search tool.
+        You are a fact-checker with access to web search. Verify the provided claim using web search.
 
         Your task:
         1. Search for evidence about the claim

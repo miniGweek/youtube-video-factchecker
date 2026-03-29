@@ -1,20 +1,27 @@
-using System.Text.Json;
 using System.Text.Json.Serialization;
 using FactChecker.Core.Enums;
 using FactChecker.Core.Interfaces;
 using FactChecker.Core.Models;
-using FactChecker.Infrastructure.Anthropic.Prompts;
+using FactChecker.Core.Options;
+using FactChecker.Infrastructure.LlmProviders.Common;
+using FactChecker.Infrastructure.LlmProviders.Stages.Prompts;
+using Microsoft.Extensions.Options;
 
-namespace FactChecker.Infrastructure.Anthropic.Stages;
+namespace FactChecker.Infrastructure.LlmProviders.Stages;
 
-public sealed class AnthropicAssessmentGenerator : IAssessmentGenerator
+public sealed class AssessmentGeneratorStage : IAssessmentGenerator
 {
-    private readonly AnthropicClientWrapper _client;
+    private const string StageId = "Assessment";
 
-    public AnthropicAssessmentGenerator(AnthropicClientWrapper client)
+    private readonly ILlmClient _client;
+    private readonly StageModelOptions _options;
+
+    public AssessmentGeneratorStage(ILlmClient client, IOptions<StageModelOptions> options)
     {
         ArgumentNullException.ThrowIfNull(client);
+        ArgumentNullException.ThrowIfNull(options);
         _client = client;
+        _options = options.Value;
     }
 
     public async Task<Assessment> GenerateAsync(
@@ -29,23 +36,26 @@ public sealed class AnthropicAssessmentGenerator : IAssessmentGenerator
 
         var userMessage = BuildUserMessage(summary, factChecks, score);
 
-        var response = await _client.SendAsync<AssessmentResponse>(
-            StagePrompts.Assessment,
-            userMessage,
-            ModelTier.Fast,
-            maxTokens: 512,
-            ct).ConfigureAwait(false);
+        var request = new LlmRequest(
+            StageId: StageId,
+            Tier: _options.Assessment,
+            SystemPrompt: StagePrompts.Assessment,
+            UserPrompt: userMessage);
+
+        var response = await _client.CompleteAsync(request, ct).ConfigureAwait(false);
+
+        var parsed = StructuredOutputParser.Parse<AssessmentResponse>(response.Content);
 
         var recommendation = Enum.TryParse<WatchRecommendation>(
-            response.Recommendation, ignoreCase: true, out var rec)
+            parsed.Recommendation, ignoreCase: true, out var rec)
             ? rec
             : WatchRecommendation.WatchWithCaution;
 
         return new Assessment(
             Recommendation: recommendation,
-            Reasoning: response.Reasoning,
-            InformationDensity: response.InformationDensity,
-            Caveats: response.Caveats ?? []);
+            Reasoning: parsed.Reasoning,
+            InformationDensity: parsed.InformationDensity,
+            Caveats: parsed.Caveats ?? []);
     }
 
     private static string BuildUserMessage(
