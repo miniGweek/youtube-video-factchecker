@@ -10,7 +10,7 @@ namespace FactChecker.Infrastructure.LlmProviders.Common;
 public static class StructuredOutputParser
 {
     private static readonly Regex MarkdownFencePattern =
-        new(@"^```(?:json)?\s*\n?([\s\S]*?)\n?```\s*$", RegexOptions.Compiled | RegexOptions.Multiline);
+        new(@"\A```(?:json)?\s*\n?([\s\S]*?)\n?```\s*\z", RegexOptions.Compiled);
 
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
