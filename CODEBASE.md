@@ -57,12 +57,12 @@ Pure C#. No NuGet dependencies. Everything here is domain logic only.
 | Enum | Values |
 |------|--------|
 | `AnalysisStatus` | Submitted, Extracting, Analysing, FactChecking, Scoring, Complete, Failed |
-| `AnalysisStage` | Validation, TranscriptExtraction, DomainDetection, Summarisation, FactChecking, Scoring, Assessment |
+| `AnalysisStage` | Validation, TranscriptExtraction, DomainDetection, Summarisation, ClaimExtraction, FactChecking, SourceValidation, Scoring, Assessment |
 | `Verdict` | Supported, PartiallySupported, Unverifiable, Refuted, NotAClaim |
 | `Confidence` | Low, Medium, High |
-| `ContentDomain` | General, Science, Technology, Health, Finance, Politics, History, Entertainment |
+| `ContentDomain` | News, Science, Finance, Health, General |
 | `TranscriptQuality` | Auto, Manual |
-| `WatchRecommendation` | Recommended, RecommendedWithCaveats, NotRecommended |
+| `WatchRecommendation` | Watch, WatchWithCaution, Skip |
 
 ### Interfaces (`Core/Interfaces/`)
 

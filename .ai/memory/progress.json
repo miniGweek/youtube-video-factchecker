@@ -1,44 +1,39 @@
----
-name: Task Progress
-description: Status of each task contract from tasks.md — updated as tasks complete
-type: project
----
-
-Task 1 (scaffolding + domain models) — **complete** (commit e7fa39b, 2026-03-27)
-- Solution builds: 0 errors, 0 warnings
-- 17 tests passing (15 Core, 1 Infra placeholder, 1 Web placeholder)
-- Targets .NET 9 / C# 13, xunit 2.9.3
-
-**Why:** Foundation for all subsequent tasks. Tasks 2, 3, and 6 are now unblocked and can run in parallel.
-**How to apply:** Do not start Tasks 2–10 without first verifying Task 1 builds clean.
-
-Task 2 (transcript extraction) — **complete** (commit f421d3d, 2026-03-27)
-Task 3 (LLM foundation) — **complete** (commit f421d3d, 2026-03-27)
-Task 4 (LLM pipeline stages) — **complete** (commit 574b8fe, 2026-03-27)
-Task 5 (fact-check engine) — **complete** (commit 574b8fe, 2026-03-27)
-Task 6 (scoring engine) — **complete** (commit f421d3d, 2026-03-27)
-Task 7 (pipeline orchestrator) — **complete** (commit c2402c1, 2026-03-27)
-- 133 tests passing (53 Core, 79 Infrastructure, 1 Web), 0 warnings
-- IAnalysisEventCompleter interface added to Core (not in original scaffold — needed for channel lifecycle)
-Task 8 (API + SSE) — **complete** (commit 10a66b5, 2026-03-27)
-- POST /api/analyse, GET /api/analyse/{id}/stream (JSON SSE), GET /api/analyse/{id}
-- 13 Web integration tests passing via WebApplicationFactory
-
-Task 9 (web UI) — **complete** (commits c2bff9c + c072142, 2026-03-27)
-- Index page (URL input + validation), Analysis page (HTMX SSE progressive render)
-- HTML SSE endpoint at /analysis/{id}/stream using ViewRenderer + Razor partials
-- 9 partials: _VideoHeader, _TranscriptInfo, _DomainBadge, _Summary, _ClaimsHeader,
-  _ClaimVerdict, _Score, _Assessment, _Error
-- _Layout (Pico CSS + HTMX + SSE ext from CDN), _ViewImports, _ViewStart
-- 145 tests passing (53 Core, 79 Infrastructure, 13 Web), 0 warnings
-
-Post-Task 9 polish — **complete** (uncommitted as of 2026-03-28):
-- Serilog integrated (appsettings.json switched to Serilog section, `UseSerilog()` in Program.cs)
-- Structured logging added to `AnalysisPipeline`, `YouTubeTranscriptExtractor`, `AnthropicClientWrapper` via `[LoggerMessage]` source generation
-- `YoutubeExplode` bumped 6.4.3 → 6.5.7
-- `PipelineTimeoutSeconds` raised 120 → 600 (allows real videos time to complete)
-- `UserSecretsId` added to Web project for local dev API key management
-- `CA1001` pragmas added for `YoutubeClient` wrapper pattern (factory owns handler lifetime)
-- Tests updated: `NullLogger<AnalysisPipeline>.Instance` passed to pipeline constructor in all test helpers
-
-Task 10 (E2E validation spike) — pending (requires real ANTHROPIC_API_KEY + manual run)
+{
+  "lastUpdated": "2026-03-28T00:00:00Z",
+  "taskSets": [
+    {
+      "id": "000",
+      "name": "Initial Build",
+      "file": ".ai/tasks/000-initial-build.md",
+      "status": "complete",
+      "tasks": [
+        { "id": "01", "name": "Scaffolding + Domain Models", "status": "complete", "commit": "e7fa39b", "date": "2026-03-27", "tests": 17, "notes": "Foundation for all subsequent tasks" },
+        { "id": "02", "name": "Transcript Extraction", "status": "complete", "commit": "f421d3d", "date": "2026-03-27", "tests": null, "notes": null },
+        { "id": "03", "name": "LLM Foundation", "status": "complete", "commit": "f421d3d", "date": "2026-03-27", "tests": null, "notes": null },
+        { "id": "04", "name": "LLM Pipeline Stages", "status": "complete", "commit": "574b8fe", "date": "2026-03-27", "tests": null, "notes": null },
+        { "id": "05", "name": "Fact-Check Engine", "status": "complete", "commit": "574b8fe", "date": "2026-03-27", "tests": null, "notes": null },
+        { "id": "06", "name": "Scoring Engine", "status": "complete", "commit": "f421d3d", "date": "2026-03-27", "tests": null, "notes": null },
+        { "id": "07", "name": "Pipeline Orchestrator", "status": "complete", "commit": "c2402c1", "date": "2026-03-27", "tests": 133, "notes": "IAnalysisEventCompleter interface added to Core (not in original scaffold)" },
+        { "id": "08", "name": "API + SSE", "status": "complete", "commit": "10a66b5", "date": "2026-03-27", "tests": 145, "notes": "13 Web integration tests via WebApplicationFactory" },
+        { "id": "09", "name": "Web UI", "status": "complete", "commit": "c072142", "date": "2026-03-27", "tests": 145, "notes": "9 Razor partials, HTML SSE endpoint, Pico CSS + HTMX" },
+        { "id": "10", "name": "E2E Validation Spike", "status": "superseded", "commit": null, "date": null, "tests": null, "notes": "Superseded by task set 001 task 6. Informal testing revealed Anthropic cost issue (~$0.65-1.00/analysis)" }
+      ],
+      "postNotes": "Post-task 9 polish: Serilog integrated, PipelineTimeoutSeconds 120→600, YoutubeExplode 6.4.3→6.5.7, UserSecretsId added"
+    },
+    {
+      "id": "001",
+      "name": "Multi-Provider LLM Integration",
+      "file": ".ai/tasks/001-multi-provider.md",
+      "status": "active",
+      "tasks": [
+        { "id": "011", "name": "ILlmClient Abstraction + Shared Types", "status": "pending", "commit": null, "date": null, "tests": null, "notes": null },
+        { "id": "012", "name": "Gemini Provider Client", "status": "pending", "commit": null, "date": null, "tests": null, "notes": null },
+        { "id": "013", "name": "Anthropic Provider Refactor", "status": "pending", "commit": null, "date": null, "tests": null, "notes": null },
+        { "id": "014", "name": "Provider-Agnostic Stage Refactor", "status": "pending", "commit": null, "date": null, "tests": null, "notes": null },
+        { "id": "015", "name": "DI Wiring + Config + Provider Switch", "status": "pending", "commit": null, "date": null, "tests": null, "notes": null },
+        { "id": "016", "name": "Gemini Quality Validation", "status": "pending", "commit": null, "date": null, "tests": null, "notes": null }
+      ],
+      "postNotes": null
+    }
+  ]
+}

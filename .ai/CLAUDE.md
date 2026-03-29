@@ -16,6 +16,7 @@ If you add a new file, add it to the relevant table. If you rename or delete one
 
 Save all memory files to `.ai/memory/` (in the project root) instead of the default Claude memory path.
 The index file is `.ai/memory/MEMORY.md`. Use the same frontmatter format (name, description, type) and content conventions.
+Task progress is tracked in `.ai/memory/progress.json` — see Progress Tracking section below.
 This keeps memory version-controlled, visible, and shared across all agents working on this project.
 
 ## What This Is
@@ -73,7 +74,7 @@ src/
     Events/           # AnalysisEvent hierarchy (one record per pipeline stage)
     Pipeline/         # AnalysisPipeline orchestrator
     Scoring/          # DefaultScoringEngine (pure deterministic logic)
-    Configuration/    # AnalysisOptions, StageModelOptions
+    Options/          # AnalysisOptions, StageModelOptions
   FactChecker.Infrastructure/
     YouTube/          # YouTubeTranscriptExtractor, YouTubeMetadataProvider
     LlmProviders/
@@ -221,7 +222,34 @@ When picking up a task from `.ai/tasks/`:
 3. **Read the specific task contract** — note dependencies, in-scope files, acceptance criteria.
 4. **Implement code + tests together** — not code first, tests later.
 5. **Verify:** `dotnet build` (zero warnings) → `dotnet test` (all pass) → diff is scoped to task.
-6. **Flag any deviations** from the architecture doc. If you need to change an interface, a model, or a module boundary — stop and propose, don't decide alone.
+6. **Update progress** — see Progress Tracking below. This is mandatory, not optional.
+7. **Flag any deviations** from the architecture doc. If you need to change an interface, a model, or a module boundary — stop and propose, don't decide alone.
+
+## Progress Tracking
+
+**File:** `.ai/memory/progress.json` — **you MUST update this file after completing every task.**
+
+This is a structured JSON file. After each task, update the matching task entry:
+
+```bash
+# Read current state
+cat .ai/memory/progress.json
+
+# Update the task entry with:
+#   "status": "complete"
+#   "commit": "<short hash of the commit>"
+#   "date": "<YYYY-MM-DD>"
+#   "tests": <total test count after this task>
+#   "notes": "<any deviations, additions, or issues — null if none>"
+```
+
+**Rules:**
+- Update the specific task object by matching its `"id"` field. Do not rewrite other entries.
+- Update `"lastUpdated"` at the root level to the current ISO timestamp.
+- If all tasks in a task set are complete, set the task set's `"status"` to `"complete"`.
+- If a task is blocked or has issues, set its `"status"` to `"blocked"` and explain in `"notes"`.
+- Allowed status values: `"pending"`, `"in-progress"`, `"complete"`, `"blocked"`, `"superseded"`.
+- This update must happen in the same commit as the task implementation.
 
 ## Patterns to Follow
 

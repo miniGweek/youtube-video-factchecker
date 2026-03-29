@@ -266,7 +266,7 @@ public interface IAnalysisEventSink
     Task PublishAsync(AnalysisEvent @event, CancellationToken ct = default);
 }
 
-public interface IAnalysisEventStream
+public interface IAnalysisEventSource
 {
     IAsyncEnumerable<AnalysisEvent> SubscribeAsync(
         string analysisId, CancellationToken ct = default);
