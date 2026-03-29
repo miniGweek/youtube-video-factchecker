@@ -56,7 +56,9 @@ builder.Services.AddOptions<StageModelOptions>()
 // ── Infrastructure — LLM Provider (Anthropic via temporary adapter) ──────────
 
 builder.Services.AddTransient<AnthropicClientWrapper>();
+#pragma warning disable CS0618 // AnthropicLlmClientAdapter is intentionally used here as a temporary bridge
 builder.Services.AddTransient<ILlmClient, AnthropicLlmClientAdapter>();
+#pragma warning restore CS0618
 
 // ── Infrastructure — LLM Stages (provider-agnostic) ──────────────────────────
 

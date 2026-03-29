@@ -85,7 +85,6 @@ public sealed class ClaimVerifierStage : IClaimVerifier
             // Merge sources from both the LLM's JSON response and the provider's search results.
             // Provider search results (from ILlmClient) take precedence as they are the actual
             // search results returned by the search tool/grounding.
-            // Merge sources: provider search results take precedence over LLM JSON sources.
             IReadOnlyList<Source> sources;
             if (searchResponse.Sources.Count > 0)
             {

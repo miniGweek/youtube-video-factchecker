@@ -12,6 +12,10 @@ namespace FactChecker.Infrastructure.Anthropic;
 /// <see cref="ILlmClient"/>. This bridge allows the new provider-agnostic stages to work with
 /// the existing Anthropic infrastructure until <c>AnthropicLlmClient</c> is implemented in Task 013.
 /// </summary>
+// TODO: Remove this adapter once AnthropicLlmClient or GeminiLlmClient is registered
+// as ILlmClient in Program.cs. This is a temporary bridge that wraps the legacy
+// AnthropicClientWrapper to satisfy the ILlmClient interface during the migration.
+[Obsolete("Temporary bridge — replace with direct AnthropicLlmClient or GeminiLlmClient registration.")]
 public sealed class AnthropicLlmClientAdapter : ILlmClient
 {
     private readonly AnthropicClientWrapper _wrapper;

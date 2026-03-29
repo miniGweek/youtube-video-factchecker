@@ -12,7 +12,12 @@ internal sealed class StubLlmClient : ILlmClient
     private LlmSearchResponse? _searchResponse;
     private Exception? _exception;
 
-    public LlmRequest? LastRequest { get; private set; }
+    private readonly List<LlmRequest> _requests = [];
+
+    public IReadOnlyList<LlmRequest> Requests => _requests;
+
+    /// <summary>The most recent request made to this stub. Null if no calls have been made.</summary>
+    public LlmRequest? LastRequest => _requests.Count > 0 ? _requests[^1] : null;
 
     public StubLlmClient WithCompleteResponse(string content)
     {
@@ -38,7 +43,7 @@ internal sealed class StubLlmClient : ILlmClient
     public Task<LlmResponse> CompleteAsync(LlmRequest request, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
-        LastRequest = request;
+        _requests.Add(request);
 
         if (_exception is not null)
             throw _exception;
@@ -50,7 +55,7 @@ internal sealed class StubLlmClient : ILlmClient
     public Task<LlmSearchResponse> CompleteWithSearchAsync(LlmRequest request, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
-        LastRequest = request;
+        _requests.Add(request);
 
         if (_exception is not null)
             throw _exception;
