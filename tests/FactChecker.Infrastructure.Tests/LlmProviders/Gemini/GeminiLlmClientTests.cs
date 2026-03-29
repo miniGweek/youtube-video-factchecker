@@ -178,6 +178,13 @@ public sealed class GeminiLlmClientTests
             .GetProperty("text")
             .GetString();
         Assert.Equal("Return JSON.", userText);
+
+        // Generation config
+        var maxOutputTokens = root
+            .GetProperty("generationConfig")
+            .GetProperty("maxOutputTokens")
+            .GetInt32();
+        Assert.Equal(4096, maxOutputTokens);
     }
 
     [Fact]

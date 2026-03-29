@@ -6,6 +6,7 @@ using FactChecker.Infrastructure.LlmProviders.Common;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Polly;
+using Polly.CircuitBreaker;
 using Polly.Retry;
 
 namespace FactChecker.Infrastructure.LlmProviders.Gemini;
@@ -52,15 +53,14 @@ public sealed partial class GeminiLlmClient : ILlmClient
         var model = ResolveModel(request.Tier);
         var sw = Stopwatch.StartNew();
 
-        var requestBody = BuildRequestBody(request.SystemPrompt, request.UserPrompt, enableSearch: false);
-        var responseJson = await SendRequestAsync(model, requestBody, ct).ConfigureAwait(false);
+        var requestBodyJson = BuildRequestBody(request.SystemPrompt, request.UserPrompt, enableSearch: false, request.MaxTokens);
+        var responseJson = await SendRequestAsync(model, requestBodyJson, ct).ConfigureAwait(false);
 
         var content = ExtractTextContent(responseJson);
         var usage = ExtractTokenUsage(responseJson);
 
-        LogModelResponse(model, usage.InputTokens, usage.OutputTokens, sw.ElapsedMilliseconds);
+        LogModelResponse(request.StageId, model, usage.InputTokens, usage.OutputTokens, sw.ElapsedMilliseconds);
 
-        // Attempt JSON parse retry if the content looks like it should be JSON but fails
         return new LlmResponse(content, usage);
     }
 
@@ -72,56 +72,22 @@ public sealed partial class GeminiLlmClient : ILlmClient
         var model = ResolveModel(request.Tier);
         var sw = Stopwatch.StartNew();
 
-        var requestBody = BuildRequestBody(request.SystemPrompt, request.UserPrompt, enableSearch: true);
-        var responseJson = await SendRequestAsync(model, requestBody, ct).ConfigureAwait(false);
+        var requestBodyJson = BuildRequestBody(request.SystemPrompt, request.UserPrompt, enableSearch: true, request.MaxTokens);
+        var responseJson = await SendRequestAsync(model, requestBodyJson, ct).ConfigureAwait(false);
 
         var content = ExtractTextContent(responseJson);
         var usage = ExtractTokenUsage(responseJson);
         var sources = GeminiGroundingParser.ExtractSources(responseJson);
 
-        LogModelResponseWithGrounding(model, usage.InputTokens, usage.OutputTokens, sw.ElapsedMilliseconds, sources.Count);
+        LogModelResponseWithGrounding(request.StageId, model, usage.InputTokens, usage.OutputTokens, sw.ElapsedMilliseconds, sources.Count);
 
         return new LlmSearchResponse(content, sources, usage);
     }
 
-    /// <summary>
-    /// Sends a completion request and returns the raw response content as a string.
-    /// On JSON parse failure, retries once with a nudge for valid JSON.
-    /// This method is intended for callers that need structured JSON output from the LLM.
-    /// </summary>
-    internal async Task<string> CompleteWithJsonRetryAsync(LlmRequest request, CancellationToken ct = default)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-
-        var response = await CompleteAsync(request, ct).ConfigureAwait(false);
-        var content = response.Content;
-
-        try
-        {
-            // Validate it's parseable JSON
-            using var doc = JsonDocument.Parse(StructuredOutputParser.ExtractJson(content));
-            return content;
-        }
-        catch (JsonException)
-        {
-            LogJsonParseRetry(request.StageId);
-
-            var nudgedRequest = request with
-            {
-                SystemPrompt = request.SystemPrompt +
-                    "\n\nIMPORTANT: Your previous response was not valid JSON. " +
-                    "Respond ONLY with a valid JSON object. Do not include any text outside the JSON."
-            };
-
-            var retryResponse = await CompleteAsync(nudgedRequest, ct).ConfigureAwait(false);
-            return retryResponse.Content;
-        }
-    }
-
-    private async Task<JsonElement> SendRequestAsync(string model, JsonElement requestBody, CancellationToken ct)
+    private async Task<JsonElement> SendRequestAsync(string model, string requestBodyJson, CancellationToken ct)
     {
         var responseText = await _retryPipeline.ExecuteAsync(
-            async token => await SendRawAsync(model, requestBody, token).ConfigureAwait(false),
+            async token => await SendRawAsync(model, requestBodyJson, token).ConfigureAwait(false),
             ct).ConfigureAwait(false);
 
         using var doc = JsonDocument.Parse(responseText);
@@ -129,13 +95,16 @@ public sealed partial class GeminiLlmClient : ILlmClient
         return doc.RootElement.Clone();
     }
 
-    private async Task<string> SendRawAsync(string model, JsonElement requestBody, CancellationToken ct)
+    private async Task<string> SendRawAsync(string model, string requestBodyJson, CancellationToken ct)
     {
+        // NOTE: Gemini REST API uses query-param auth by default; the key will appear
+        // in server access logs and HTTP diagnostic traces. Rotate keys regularly and
+        // ensure structured-log sinks do not capture full URLs at Debug level.
         var url = $"{BaseUrl}{model}:generateContent?key={_options.ApiKey}";
 
         using var httpClient = _httpClientFactory.CreateClient(nameof(GeminiLlmClient));
         using var content = new StringContent(
-            requestBody.GetRawText(),
+            requestBodyJson,
             System.Text.Encoding.UTF8,
             "application/json");
 
@@ -148,56 +117,38 @@ public sealed partial class GeminiLlmClient : ILlmClient
         return rawJson;
     }
 
-    internal static JsonElement BuildRequestBody(string systemPrompt, string userPrompt, bool enableSearch)
+    internal static string BuildRequestBody(string systemPrompt, string userPrompt, bool enableSearch, int maxTokens)
     {
-        using var stream = new System.IO.MemoryStream();
-        using (var writer = new Utf8JsonWriter(stream))
+        var body = new System.Text.Json.Nodes.JsonObject
         {
-            writer.WriteStartObject();
-
-            // systemInstruction
-            writer.WritePropertyName("systemInstruction");
-            writer.WriteStartObject();
-            writer.WritePropertyName("parts");
-            writer.WriteStartArray();
-            writer.WriteStartObject();
-            writer.WriteString("text", systemPrompt);
-            writer.WriteEndObject();
-            writer.WriteEndArray();
-            writer.WriteEndObject();
-
-            // contents
-            writer.WritePropertyName("contents");
-            writer.WriteStartArray();
-            writer.WriteStartObject();
-            writer.WriteString("role", "user");
-            writer.WritePropertyName("parts");
-            writer.WriteStartArray();
-            writer.WriteStartObject();
-            writer.WriteString("text", userPrompt);
-            writer.WriteEndObject();
-            writer.WriteEndArray();
-            writer.WriteEndObject();
-            writer.WriteEndArray();
-
-            // tools (optional)
-            if (enableSearch)
+            ["systemInstruction"] = new System.Text.Json.Nodes.JsonObject
             {
-                writer.WritePropertyName("tools");
-                writer.WriteStartArray();
-                writer.WriteStartObject();
-                writer.WritePropertyName("google_search");
-                writer.WriteStartObject();
-                writer.WriteEndObject();
-                writer.WriteEndObject();
-                writer.WriteEndArray();
+                ["parts"] = new System.Text.Json.Nodes.JsonArray(
+                    new System.Text.Json.Nodes.JsonObject { ["text"] = systemPrompt })
+            },
+            ["contents"] = new System.Text.Json.Nodes.JsonArray(
+                new System.Text.Json.Nodes.JsonObject
+                {
+                    ["role"] = "user",
+                    ["parts"] = new System.Text.Json.Nodes.JsonArray(
+                        new System.Text.Json.Nodes.JsonObject { ["text"] = userPrompt })
+                }),
+            ["generationConfig"] = new System.Text.Json.Nodes.JsonObject
+            {
+                ["maxOutputTokens"] = maxTokens
             }
+        };
 
-            writer.WriteEndObject();
+        if (enableSearch)
+        {
+            body["tools"] = new System.Text.Json.Nodes.JsonArray(
+                new System.Text.Json.Nodes.JsonObject
+                {
+                    ["google_search"] = new System.Text.Json.Nodes.JsonObject()
+                });
         }
 
-        using var doc = JsonDocument.Parse(stream.ToArray());
-        return doc.RootElement.Clone();
+        return body.ToJsonString();
     }
 
     private static string ExtractTextContent(JsonElement responseJson)
@@ -300,18 +251,28 @@ public sealed partial class GeminiLlmClient : ILlmClient
                 BackoffType = DelayBackoffType.Exponential,
                 UseJitter = true,
             })
+            .AddCircuitBreaker(new CircuitBreakerStrategyOptions
+            {
+                ShouldHandle = new PredicateBuilder()
+                    .Handle<HttpRequestException>()
+                    .Handle<TimeoutException>(),
+                FailureRatio = 0.5,
+                SamplingDuration = TimeSpan.FromSeconds(30),
+                MinimumThroughput = 5,
+                BreakDuration = TimeSpan.FromSeconds(30),
+            })
             .Build();
     }
 
     // ── Source-generated log methods ─────────────────────────────────────────
 
     [LoggerMessage(Level = LogLevel.Debug,
-        Message = "Gemini {Model} responded: input={InputTokens}, output={OutputTokens}, latency={ElapsedMs}ms.")]
-    private partial void LogModelResponse(string model, int inputTokens, int outputTokens, long elapsedMs);
+        Message = "Gemini [{StageId}] {Model} responded: input={InputTokens}, output={OutputTokens}, latency={ElapsedMs}ms.")]
+    private partial void LogModelResponse(string stageId, string model, int inputTokens, int outputTokens, long elapsedMs);
 
     [LoggerMessage(Level = LogLevel.Debug,
-        Message = "Gemini {Model} responded with grounding: input={InputTokens}, output={OutputTokens}, latency={ElapsedMs}ms, sources={SourceCount}.")]
-    private partial void LogModelResponseWithGrounding(string model, int inputTokens, int outputTokens, long elapsedMs, int sourceCount);
+        Message = "Gemini [{StageId}] {Model} responded with grounding: input={InputTokens}, output={OutputTokens}, latency={ElapsedMs}ms, sources={SourceCount}.")]
+    private partial void LogModelResponseWithGrounding(string stageId, string model, int inputTokens, int outputTokens, long elapsedMs, int sourceCount);
 
     [LoggerMessage(Level = LogLevel.Warning,
         Message = "JSON parse failed for stage {StageId}; retrying with JSON nudge.")]
