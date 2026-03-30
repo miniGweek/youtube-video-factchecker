@@ -85,6 +85,20 @@ public sealed class GeminiLlmClientTests
         Assert.Equal(string.Empty, result.Content);
     }
 
+    [Fact]
+    public async Task CompleteWithSearchAsync_SafetyBlocked_ReturnsEmptyContent()
+    {
+        var fixture = LoadFixture("complete-safety-blocked.json");
+        var handler = new StaticResponseHandler(HttpStatusCode.OK, fixture);
+        var client = CreateClient(handler);
+
+        var request = DefaultRequest with { Tier = ModelTier.Premium };
+        var result = await client.CompleteWithSearchAsync(request);
+
+        Assert.Equal(string.Empty, result.Content);
+        Assert.Empty(result.Sources);
+    }
+
     // ── CompleteWithSearchAsync ──────────────────────────────────────────────
 
     [Fact]

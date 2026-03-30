@@ -12,4 +12,7 @@ internal static class StageTestHelper
 {
     public static IOptions<StageModelOptions> CreateOptions(StageModelOptions? options = null) =>
         Microsoft.Extensions.Options.Options.Create(options ?? new StageModelOptions());
+
+    public static IOptions<AnalysisOptions> CreateAnalysisOptions(AnalysisOptions? options = null) =>
+        Microsoft.Extensions.Options.Options.Create(options ?? new AnalysisOptions());
 }

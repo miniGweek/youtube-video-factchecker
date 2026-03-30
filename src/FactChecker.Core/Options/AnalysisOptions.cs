@@ -7,4 +7,5 @@ public class AnalysisOptions
     public int MaxConcurrentVerifications { get; set; } = 4;
     public int SourceValidationTimeoutSeconds { get; set; } = 5;
     public int PipelineTimeoutSeconds { get; set; } = 120;
+    public int MaxVerificationRetries { get; set; } = 2;
 }
