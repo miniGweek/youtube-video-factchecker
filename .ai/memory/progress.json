@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-03-30T00:00:00Z",
+  "lastUpdated": "2026-03-30T12:00:00Z",
   "fixes": [
     {
       "id": "fix-001",
@@ -50,6 +50,16 @@
         { "id": "016", "name": "Gemini Quality Validation", "status": "complete", "commit": null, "date": "2026-03-30", "tests": null, "notes": "Gemini calls confirmed working via manual testing. Throttling issue observed — deferred to separate task." }
       ],
       "postNotes": "Task 016 validated manually. No spike-2-gemini-results.md created — informal validation. Throttling (rate limiting) issue deferred."
+    },
+    {
+      "id": "002",
+      "name": "CI Foundation",
+      "file": ".ai/tasks/002-ci-foundation.md",
+      "status": "complete",
+      "tasks": [
+        { "id": "021", "name": "verify.sh + GitHub Actions workflow + CLAUDE.md", "status": "complete", "commit": "bdadc82", "date": "2026-03-30", "tests": 220, "notes": "Branched from task/011-llm-client-abstraction. .NET SDK 9.0.x confirmed from net9.0 target. verify.sh passes locally." }
+      ],
+      "postNotes": null
     }
   ]
 }
