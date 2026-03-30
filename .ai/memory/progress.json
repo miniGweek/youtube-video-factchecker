@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-03-30T09:30:00Z",
+  "lastUpdated": "2026-03-30T00:00:00Z",
   "fixes": [
     {
       "id": "fix-001",
@@ -40,16 +40,16 @@
       "id": "001",
       "name": "Multi-Provider LLM Integration",
       "file": ".ai/tasks/001-multi-provider.md",
-      "status": "active",
+      "status": "complete",
       "tasks": [
         { "id": "011", "name": "ILlmClient Abstraction + Shared Types", "status": "complete", "commit": "49571e6", "date": "2026-03-29", "tests": 155, "notes": "Placed in LlmProviders/Common/ (not Shared/) — 'Shared' is a reserved VB keyword, CA1716 fires. SearchResultSource uses Uri Url (not string) for type safety. StageModelOptions moved to Core/Options/ as planned." },
         { "id": "012", "name": "Gemini Provider Client", "status": "complete", "commit": "2977c57", "date": "2026-03-29", "tests": 180, "notes": "GeminiLlmClient + GeminiGroundingParser + GeminiOptions + GeminiApiException. 18 client tests + 7 grounding parser tests with recorded fixtures." },
         { "id": "013", "name": "Anthropic Provider Refactor", "status": "complete", "commit": "ccaeb88", "date": "2026-03-29", "tests": 201, "notes": "AnthropicLlmClient wraps existing API call patterns. AnthropicWebSearchParser extracts sources from web_search_tool_result blocks. PremiumModel added to AnthropicOptions. 12 client tests + 9 parser tests." },
         { "id": "014", "name": "Provider-Agnostic Stage Refactor", "status": "complete", "commit": "aa7e743", "date": "2026-03-29", "tests": 220, "notes": "All 5 stages refactored to use ILlmClient. Old Anthropic/Stages/ deleted. Prompts moved to LlmProviders/Stages/Prompts/. AnthropicLlmClientAdapter added as temporary bridge. Fixture copy bug in csproj fixed (missing LlmProviders/Anthropic/Fixtures glob)." },
         { "id": "015", "name": "DI Wiring + Config + Provider Switch", "status": "complete", "commit": "f35ed55", "date": "2026-03-29", "tests": 220, "notes": "ServiceCollectionExtensions.AddLlmProvider() reads LlmProvider config. Program.cs simplified to single AddLlmProvider call. appsettings.json updated with Gemini as default provider, StageModelOptions, GeminiOptions, AnthropicOptions." },
-        { "id": "016", "name": "Gemini Quality Validation", "status": "pending", "commit": null, "date": null, "tests": null, "notes": null }
+        { "id": "016", "name": "Gemini Quality Validation", "status": "complete", "commit": null, "date": "2026-03-30", "tests": null, "notes": "Gemini calls confirmed working via manual testing. Throttling issue observed — deferred to separate task." }
       ],
-      "postNotes": null
+      "postNotes": "Task 016 validated manually. No spike-2-gemini-results.md created — informal validation. Throttling (rate limiting) issue deferred."
     }
   ]
 }
