@@ -5,7 +5,7 @@
       "id": "fix-003",
       "description": "LLM calls sent no temperature parameter (defaulting to 1.0), causing non-deterministic claim counts and scores across runs. Fixed by adding Temperature=0.0 to LlmRequest and passing it through AnthropicLlmClient, GeminiLlmClient, and AnthropicClientWrapper.",
       "date": "2026-03-30",
-      "commit": null,
+      "commit": "ea19ffa",
       "filesChanged": [
         "src/FactChecker.Infrastructure/LlmProviders/Common/LlmRequest.cs",
         "src/FactChecker.Infrastructure/Options/AnthropicOptions.cs",
@@ -21,7 +21,7 @@
       "id": "fix-004",
       "description": "ClaimVerifierStage silently swallowed JSON parse failures with no logging and no retry. Added ILogger injection, a JSON nudge retry (same pattern as AnthropicClientWrapper), Warning log on first failure, Error log on retry failure.",
       "date": "2026-03-30",
-      "commit": null,
+      "commit": "ea19ffa",
       "filesChanged": [
         "src/FactChecker.Infrastructure/LlmProviders/Stages/ClaimVerifierStage.cs",
         "tests/FactChecker.Infrastructure.Tests/LlmProviders/Stages/StubLlmClient.cs",
