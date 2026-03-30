@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-03-30T12:00:00Z",
+  "lastUpdated": "2026-03-30T18:30:00Z",
   "fixes": [
     {
       "id": "fix-001",
@@ -14,9 +14,30 @@
         ".ai/design/architecture.md"
       ],
       "architectureImpact": false
+    },
+    {
+      "id": "fix-002",
+      "description": "StructuredOutputParser regex used \\A anchor, causing JSON parse failure when LLM prefixes response with prose before the markdown fence. Fixed by removing anchor, adding brace-counting fallback extraction, and allowing trailing commas.",
+      "date": "2026-03-30",
+      "commit": null,
+      "filesChanged": [
+        "src/FactChecker.Infrastructure/LlmProviders/Common/StructuredOutputParser.cs",
+        "tests/FactChecker.Infrastructure.Tests/LlmProviders/Common/StructuredOutputParserTests.cs"
+      ],
+      "architectureImpact": false
     }
   ],
   "taskSets": [
+    {
+      "id": "003",
+      "name": "Claim Verification Observability + UI Progress",
+      "file": ".ai/tasks/003-claim-verification-observability.md",
+      "status": "complete",
+      "tasks": [
+        { "id": "031", "name": "Per-claim logging + progress bar + error reasons", "status": "complete", "commit": null, "date": "2026-03-30", "tests": 158, "notes": "Stage-level logs, per-claim logs with Interlocked counter, progress bar via ClaimsHeaderModel.VerifiedCount, JSON parser hardening included in same PR" }
+      ],
+      "postNotes": null
+    },
     {
       "id": "000",
       "name": "Initial Build",
