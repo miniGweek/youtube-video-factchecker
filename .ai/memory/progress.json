@@ -57,6 +57,18 @@
   ],
   "taskSets": [
     {
+      "id": "004",
+      "name": "LLM Determinism + JSON Retry & Logging",
+      "file": ".ai/tasks/004-llm-determinism-and-json-retry.md",
+      "status": "complete",
+      "tasks": [
+        { "id": "041", "name": "Temperature=0.0 + LlmRequest.Temperature property", "status": "complete", "commit": "ea19ffa", "date": "2026-03-30", "tests": 220, "notes": "Temperature wired through AnthropicLlmClient, GeminiLlmClient, AnthropicClientWrapper. DefaultTemperature in options." },
+        { "id": "042", "name": "ClaimVerifierStage JSON retry + logging", "status": "complete", "commit": "ea19ffa", "date": "2026-03-30", "tests": 220, "notes": "ILogger injected, Warning on first JSON failure, retry with JSON nudge, Error on second failure." },
+        { "id": "043", "name": "Harden claim verification against empty/invalid responses", "status": "complete", "commit": "cb2f455", "date": "2026-03-31", "tests": 240, "notes": "TryParse<T>/ParseResult<T> structured error handling, configurable MaxVerificationRetries=5, finishReason logging for Gemini empty content, context-aware nudge prompts." }
+      ],
+      "postNotes": null
+    },
+    {
       "id": "003",
       "name": "Claim Verification Observability + UI Progress",
       "file": ".ai/tasks/003-claim-verification-observability.md",
