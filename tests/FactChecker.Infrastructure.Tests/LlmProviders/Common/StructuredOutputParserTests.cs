@@ -140,4 +140,84 @@ public class StructuredOutputParserTests
     {
         Assert.Throws<JsonException>(() => StructuredOutputParser.Parse<TestPayload>(string.Empty));
     }
+
+    // ── comment stripping ────────────────────────────────────────────────────
+
+    [Fact]
+    public void Parse_JsonWithFullLineComment_StripsAndDeserializes()
+    {
+        var json = """
+            // this is a full-line comment
+            {"name":"commented","value":10}
+            """;
+
+        var result = StructuredOutputParser.Parse<TestPayload>(json);
+
+        Assert.Equal("commented", result.Name);
+        Assert.Equal(10, result.Value);
+    }
+
+    [Fact]
+    public void Parse_JsonWithCommentBetweenProperties_StripsAndDeserializes()
+    {
+        var json = """
+            {
+              // verdicts section
+              "name": "multiline",
+              // end
+              "value": 42
+            }
+            """;
+
+        var result = StructuredOutputParser.Parse<TestPayload>(json);
+
+        Assert.Equal("multiline", result.Name);
+        Assert.Equal(42, result.Value);
+    }
+
+    [Fact]
+    public void Parse_JsonWithUrlContainingDoubleSlash_PreservesUrl()
+    {
+        // Ensure "//" inside a string value is NOT stripped as a comment
+        var json = """{"name":"https://example.com","value":1}""";
+
+        var result = StructuredOutputParser.Parse<TestPayload>(json);
+
+        Assert.Equal("https://example.com", result.Name);
+    }
+
+    // ── TryParse ─────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void TryParse_ValidJson_ReturnsSuccess()
+    {
+        var json = """{"name":"ok","value":7}""";
+
+        var result = StructuredOutputParser.TryParse<TestPayload>(json);
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(result.Value);
+        Assert.Equal("ok", result.Value.Name);
+        Assert.Null(result.Error);
+    }
+
+    [Fact]
+    public void TryParse_InvalidJson_ReturnsFailureWithError()
+    {
+        var result = StructuredOutputParser.TryParse<TestPayload>("this is not json");
+
+        Assert.False(result.IsSuccess);
+        Assert.NotNull(result.Error);
+        Assert.Null(result.Value);
+    }
+
+    [Fact]
+    public void TryParse_InvalidJson_ReturnsExtractedJsonFragment()
+    {
+        var result = StructuredOutputParser.TryParse<TestPayload>("not json at all");
+
+        Assert.False(result.IsSuccess);
+        // ExtractedJson holds what the parser actually tried to deserialize
+        Assert.NotNull(result.ExtractedJson);
+    }
 }

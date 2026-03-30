@@ -10,9 +10,11 @@ namespace FactChecker.Infrastructure.LlmProviders.Common;
 /// <param name="SystemPrompt">Instructions that define the model's role and output format.</param>
 /// <param name="UserPrompt">The content the model should process (transcript, claim text, etc.).</param>
 /// <param name="MaxTokens">Maximum number of output tokens. Defaults to 4096.</param>
+/// <param name="Temperature">Sampling temperature (0.0 = deterministic). Defaults to 0.0.</param>
 public record LlmRequest(
     string StageId,
     ModelTier Tier,
     string SystemPrompt,
     string UserPrompt,
-    int MaxTokens = 4096);
+    int MaxTokens = 4096,
+    double Temperature = 0.0);

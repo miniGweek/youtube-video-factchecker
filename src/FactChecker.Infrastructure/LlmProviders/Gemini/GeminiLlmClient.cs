@@ -53,11 +53,18 @@ public sealed partial class GeminiLlmClient : ILlmClient
         var model = ResolveModel(request.Tier);
         var sw = Stopwatch.StartNew();
 
-        var requestBodyJson = BuildRequestBody(request.SystemPrompt, request.UserPrompt, enableSearch: false, request.MaxTokens);
+        var requestBodyJson = BuildRequestBody(request.SystemPrompt, request.UserPrompt, enableSearch: false, request.MaxTokens, request.Temperature);
         var responseJson = await SendRequestAsync(model, requestBodyJson, ct).ConfigureAwait(false);
 
         var content = ExtractTextContent(responseJson);
         var usage = ExtractTokenUsage(responseJson);
+
+        if (string.IsNullOrEmpty(content))
+        {
+            var finishReason = ExtractFinishReason(responseJson);
+            LogEmptyContent(request.StageId, model, finishReason);
+            LogRawResponseDebug(request.StageId, model, responseJson.ToString());
+        }
 
         LogModelResponse(request.StageId, model, usage.InputTokens, usage.OutputTokens, sw.ElapsedMilliseconds);
 
@@ -72,12 +79,19 @@ public sealed partial class GeminiLlmClient : ILlmClient
         var model = ResolveModel(request.Tier);
         var sw = Stopwatch.StartNew();
 
-        var requestBodyJson = BuildRequestBody(request.SystemPrompt, request.UserPrompt, enableSearch: true, request.MaxTokens);
+        var requestBodyJson = BuildRequestBody(request.SystemPrompt, request.UserPrompt, enableSearch: true, request.MaxTokens, request.Temperature);
         var responseJson = await SendRequestAsync(model, requestBodyJson, ct).ConfigureAwait(false);
 
         var content = ExtractTextContent(responseJson);
         var usage = ExtractTokenUsage(responseJson);
         var sources = GeminiGroundingParser.ExtractSources(responseJson);
+
+        if (string.IsNullOrEmpty(content))
+        {
+            var finishReason = ExtractFinishReason(responseJson);
+            LogEmptyContent(request.StageId, model, finishReason);
+            LogRawResponseDebug(request.StageId, model, responseJson.ToString());
+        }
 
         LogModelResponseWithGrounding(request.StageId, model, usage.InputTokens, usage.OutputTokens, sw.ElapsedMilliseconds, sources.Count);
 
@@ -117,7 +131,7 @@ public sealed partial class GeminiLlmClient : ILlmClient
         return rawJson;
     }
 
-    internal static string BuildRequestBody(string systemPrompt, string userPrompt, bool enableSearch, int maxTokens)
+    internal static string BuildRequestBody(string systemPrompt, string userPrompt, bool enableSearch, int maxTokens, double temperature)
     {
         var body = new System.Text.Json.Nodes.JsonObject
         {
@@ -135,7 +149,8 @@ public sealed partial class GeminiLlmClient : ILlmClient
                 }),
             ["generationConfig"] = new System.Text.Json.Nodes.JsonObject
             {
-                ["maxOutputTokens"] = maxTokens
+                ["maxOutputTokens"] = maxTokens,
+                ["temperature"] = temperature
             }
         };
 
@@ -165,11 +180,27 @@ public sealed partial class GeminiLlmClient : ILlmClient
             parts.GetArrayLength() == 0)
             return string.Empty;
 
-        var firstPart = parts[0];
-        if (firstPart.TryGetProperty("text", out var textProp))
-            return textProp.GetString() ?? string.Empty;
+        // Iterate all parts — take the last text part found.
+        // Mirrors AnthropicWebSearchParser behavior and handles non-text parts
+        // appearing before the model's text response.
+        string? lastText = null;
+        foreach (var part in parts.EnumerateArray())
+        {
+            if (part.TryGetProperty("text", out var textProp))
+                lastText = textProp.GetString();
+        }
 
-        return string.Empty;
+        return lastText ?? string.Empty;
+    }
+
+    private static string? ExtractFinishReason(JsonElement responseJson)
+    {
+        if (!responseJson.TryGetProperty("candidates", out var candidates) ||
+            candidates.GetArrayLength() == 0)
+            return null;
+        return candidates[0].TryGetProperty("finishReason", out var reason)
+            ? reason.GetString()
+            : null;
     }
 
     private static TokenUsage ExtractTokenUsage(JsonElement responseJson)
@@ -275,8 +306,12 @@ public sealed partial class GeminiLlmClient : ILlmClient
     private partial void LogModelResponseWithGrounding(string stageId, string model, int inputTokens, int outputTokens, long elapsedMs, int sourceCount);
 
     [LoggerMessage(Level = LogLevel.Warning,
-        Message = "JSON parse failed for stage {StageId}; retrying with JSON nudge.")]
-    private partial void LogJsonParseRetry(string stageId);
+        Message = "Gemini [{StageId}] {Model}: response contained no text content (finishReason={FinishReason}). Possible safety/recitation filter or unexpected response structure.")]
+    private partial void LogEmptyContent(string stageId, string model, string? finishReason);
+
+    [LoggerMessage(Level = LogLevel.Debug,
+        Message = "Gemini [{StageId}] {Model}: raw API response for empty-content diagnosis: {RawResponse}")]
+    private partial void LogRawResponseDebug(string stageId, string model, string rawResponse);
 
     [LoggerMessage(Level = LogLevel.Warning,
         Message = "Gemini API {StatusCode} ({ErrorStatus}) — transient, will retry.")]

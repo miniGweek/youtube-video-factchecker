@@ -85,6 +85,20 @@ public sealed class GeminiLlmClientTests
         Assert.Equal(string.Empty, result.Content);
     }
 
+    [Fact]
+    public async Task CompleteWithSearchAsync_SafetyBlocked_ReturnsEmptyContent()
+    {
+        var fixture = LoadFixture("complete-safety-blocked.json");
+        var handler = new StaticResponseHandler(HttpStatusCode.OK, fixture);
+        var client = CreateClient(handler);
+
+        var request = DefaultRequest with { Tier = ModelTier.Premium };
+        var result = await client.CompleteWithSearchAsync(request);
+
+        Assert.Equal(string.Empty, result.Content);
+        Assert.Empty(result.Sources);
+    }
+
     // ── CompleteWithSearchAsync ──────────────────────────────────────────────
 
     [Fact]
@@ -180,11 +194,12 @@ public sealed class GeminiLlmClientTests
         Assert.Equal("Return JSON.", userText);
 
         // Generation config
-        var maxOutputTokens = root
-            .GetProperty("generationConfig")
-            .GetProperty("maxOutputTokens")
-            .GetInt32();
+        var genConfig = root.GetProperty("generationConfig");
+        var maxOutputTokens = genConfig.GetProperty("maxOutputTokens").GetInt32();
         Assert.Equal(4096, maxOutputTokens);
+
+        var temperature = genConfig.GetProperty("temperature").GetDouble();
+        Assert.Equal(0.0, temperature);
     }
 
     [Fact]

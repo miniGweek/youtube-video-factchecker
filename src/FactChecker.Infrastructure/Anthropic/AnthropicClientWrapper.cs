@@ -158,6 +158,7 @@ public sealed partial class AnthropicClientWrapper
         {
             ["model"] = model,
             ["max_tokens"] = maxTokens,
+            ["temperature"] = 0.0,
             ["system"] = systemPrompt,
             ["messages"] = new System.Text.Json.Nodes.JsonArray(
                 new System.Text.Json.Nodes.JsonObject
@@ -203,6 +204,7 @@ public sealed partial class AnthropicClientWrapper
         var request = new AnthropicRequest(
             Model: model,
             MaxTokens: maxTokens,
+            Temperature: 0.0,
             System: systemPrompt,
             Messages: [new AnthropicMessage("user", userMessage)],
             Tools: tools?.Count > 0 ? [.. tools] : null);
@@ -318,6 +320,7 @@ file sealed record AnthropicMessage(
 file sealed record AnthropicRequest(
     [property: JsonPropertyName("model")] string Model,
     [property: JsonPropertyName("max_tokens")] int MaxTokens,
+    [property: JsonPropertyName("temperature")] double Temperature,
     [property: JsonPropertyName("system")] string? System,
     [property: JsonPropertyName("messages")] AnthropicMessage[] Messages,
     [property: JsonPropertyName("tools")] AnthropicTool[]? Tools);
