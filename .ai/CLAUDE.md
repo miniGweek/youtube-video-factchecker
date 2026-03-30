@@ -20,6 +20,42 @@ Human commits use the global git config (`dedlok@gmail.com`) — do not touch it
 
 ---
 
+## PR & Branch Workflow
+
+### During work
+- Default: branch from `main`. Only branch from a feature branch if stacking dependent work — note the dependency in the PR body.
+- Branch naming: `task/<id>-short-description`, `chore/<description>`, `fix/<description>`.
+- Run `./verify.sh` before every commit.
+
+### When work is complete
+- `./verify.sh` passes, progress.json updated, CODEBASE.md updated if files added/removed.
+- Open a PR via `gh pr create`. Stop. Do not start new work.
+
+### After PR is merged — cleanup before new work
+
+```bash
+# Remove stale worktrees (required if agent branches exist)
+git worktree prune
+
+# Sync and prune stale remote-tracking references
+git fetch --prune
+git checkout main
+git pull
+
+# Delete merged local branches (-d refuses if unmerged commits exist)
+git branch -d <merged-branch>
+
+# Verify clean state
+git branch
+```
+
+### Start new work
+- Branch from updated `main` (or the appropriate base if stacking).
+- Create task contract in `.ai/tasks/` before writing code.
+- Update progress.json to `"in-progress"` at task start.
+
+---
+
 ## Codebase & Architecture References
 
 Before any task, read these documents — do not rely on summaries below:
