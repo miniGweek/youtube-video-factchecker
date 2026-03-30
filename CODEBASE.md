@@ -136,6 +136,7 @@ The pipeline **never throws** — all errors become `AnalysisFailedEvent`. Indiv
 - `MaxConcurrentVerifications` (4)
 - `SourceValidationTimeoutSeconds` (5)
 - `PipelineTimeoutSeconds` (120)
+- `MaxVerificationRetries` (5)
 
 **`StageModelOptions.cs`** — configures which `ModelTier` each pipeline stage uses; tunable via `appsettings.json` without code changes:
 - `DomainDetection` → Fast
@@ -322,7 +323,8 @@ Minimal API, all routes registered via `MapAnalysisEndpoints()` extension:
     "MaxClaimsToVerify": 15,
     "MaxConcurrentVerifications": 4,
     "SourceValidationTimeoutSeconds": 5,
-    "PipelineTimeoutSeconds": 600
+    "PipelineTimeoutSeconds": 600,
+    "MaxVerificationRetries": 5
   },
   "StageModelOptions": {
     "DomainDetection": "Fast",
@@ -332,17 +334,19 @@ Minimal API, all routes registered via `MapAnalysisEndpoints()` extension:
     "Assessment": "Fast"
   },
   "GeminiOptions": {
-    "FastModel": "gemini-2.5-flash",
-    "StandardModel": "gemini-2.5-flash",
+    "FastModel": "gemini-2.5-flash-lite",
+    "StandardModel": "gemini-2.5-flash-lite",
     "PremiumModel": "gemini-2.5-pro",
     "EnableSearchGrounding": true,
-    "MaxRetries": 2
+    "MaxRetries": 2,
+    "DefaultTemperature": 0.0
   },
   "AnthropicOptions": {
     "FastModel": "claude-haiku-4-5-20251001",
     "StandardModel": "claude-sonnet-4-20250514",
     "PremiumModel": "claude-sonnet-4-20250514",
-    "MaxRetries": 2
+    "MaxRetries": 2,
+    "DefaultTemperature": 0.0
   }
 }
 ```
@@ -381,7 +385,7 @@ Background: AnalysisPipeline.RunAsync()
 | Project | Count | Approach |
 |---------|-------|---------|
 | `FactChecker.Core.Tests` | 53 | Unit tests. No mocks. Hand-crafted inputs for scoring, state-machine, pipeline (mocked interfaces). |
-| `FactChecker.Infrastructure.Tests` | 154 | LLM provider clients tested with **recorded API response fixtures** (JSON files) — no live API calls. Provider-agnostic stages tested with mocked `ILlmClient`. Gemini: 18 client tests + 7 grounding parser tests. Anthropic: 12 client tests + 9 web search parser tests. Stages: 5 stage test classes. Common: 10 StructuredOutputParser tests. Channel transport, URL validator, HTTP source validator tested directly. |
+| `FactChecker.Infrastructure.Tests` | 174 | LLM provider clients tested with **recorded API response fixtures** (JSON files) — no live API calls. Provider-agnostic stages tested with mocked `ILlmClient`. Gemini: 18 client tests + 7 grounding parser tests. Anthropic: 12 client tests + 9 web search parser tests. Stages: 5 stage test classes. Common: 10 StructuredOutputParser tests. Channel transport, URL validator, HTTP source validator tested directly. |
 | `FactChecker.Web.Tests` | 13 | Integration tests via `WebApplicationFactory`. Tests all three API endpoints. |
 
 ---

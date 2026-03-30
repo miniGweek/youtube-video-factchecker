@@ -1,6 +1,6 @@
 # Task 004 — LLM Determinism + JSON Retry & Logging
 
-Status: active
+Status: complete
 
 ## Goal
 
@@ -16,12 +16,12 @@ Two related reliability issues with claim verification:
 
 ## Acceptance Criteria
 
-- [ ] All LLM API calls include `temperature=0` (Anthropic and Gemini)
-- [ ] `LlmRequest` record has a `Temperature` property defaulting to `0.0`
-- [ ] `ClaimVerifierStage` logs a Warning when JSON parsing fails on the first attempt
-- [ ] `ClaimVerifierStage` retries once with a JSON nudge in the system prompt
-- [ ] `ClaimVerifierStage` logs an Error if retry also fails, before returning Unverifiable
-- [ ] `./verify.sh` passes with zero warnings
+- [x] All LLM API calls include `temperature=0` (Anthropic and Gemini)
+- [x] `LlmRequest` record has a `Temperature` property defaulting to `0.0`
+- [x] `ClaimVerifierStage` logs a Warning when JSON parsing fails on the first attempt
+- [x] `ClaimVerifierStage` retries once with a JSON nudge in the system prompt
+- [x] `ClaimVerifierStage` logs an Error if retry also fails, before returning Unverifiable
+- [x] `./verify.sh` passes with zero warnings
 
 ## In-Scope Files
 
