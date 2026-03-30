@@ -93,6 +93,13 @@ public class StructuredOutputParserTests
         Assert.Equal("{\"key\":\"val\"}", StructuredOutputParser.ExtractJson(input));
     }
 
+    [Fact]
+    public void ExtractJson_FenceWithTrailingText_ReturnsInnerContent()
+    {
+        var input = "```json\n{\"key\":\"val\"}\n```\n\nNote: this is extra text the LLM appended.";
+        Assert.Equal("{\"key\":\"val\"}", StructuredOutputParser.ExtractJson(input));
+    }
+
     // ── error cases ──────────────────────────────────────────────────────────
 
     [Fact]
