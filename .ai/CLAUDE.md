@@ -49,6 +49,14 @@ dotnet run --project src/FactChecker.Web        # Runs on https://localhost:5001
 
 **Warnings are errors.** `Directory.Build.props` enforces `TreatWarningsAsErrors`. Fix warnings, don't suppress them.
 
+### Verification
+
+```bash
+./verify.sh    # Run before every PR. Must pass with zero errors.
+```
+
+**`verify.sh` is unmodifiable.** Do not edit, rename, move, or skip this script. If it fails, fix the code — not the script.
+
 ---
 
 ## Package Management
@@ -179,6 +187,7 @@ Increment the `"id"` sequentially. Set `"architectureImpact": true` only if a pu
 - Don't self-assess your own output quality — that is the human's job.
 - Don't override repo-level git config — identity is set per-commit via `-c` flags.
 - Don't hand-edit `.csproj` package versions from memory — use `dotnet add package` to resolve latest.
+- Don't modify `verify.sh` or `.github/workflows/ci.yml` unless explicitly instructed.
 
 ---
 
