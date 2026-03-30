@@ -2,8 +2,10 @@
 
 <h3 style="margin-top:1.5rem;margin-bottom:.5rem">
     @(Model.IsComplete ? "Fact-checked" : "Fact-checking") @Model.Count claim@(Model.Count == 1 ? "" : "s")
-    @if (!Model.IsComplete)
+    @if (!Model.IsComplete && Model.Count > 0)
     {
-        <span aria-busy="true" style="font-size:.85rem;font-weight:normal;margin-left:.5rem">verifying…</span>
+        <progress value="@Model.VerifiedCount" max="@Model.Count"
+                  style="width:8rem;margin-left:.75rem;vertical-align:middle"></progress>
+        <span style="font-size:.8rem;font-weight:normal;margin-left:.4rem">@Model.VerifiedCount / @Model.Count</span>
     }
 </h3>

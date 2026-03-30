@@ -124,6 +124,7 @@ public sealed partial class AnalysisPipeline
                 domain = ContentDomain.General;
             }
 #pragma warning restore CA1031
+            LogDomainDetected(analysisId, domain);
             await _sink.PublishAsync(
                 new DomainDetectedEvent(analysisId, DateTimeOffset.UtcNow, domain), linkedCt)
                 .ConfigureAwait(false);
@@ -139,6 +140,8 @@ public sealed partial class AnalysisPipeline
             var summary = await summaryTask.ConfigureAwait(false);
             var claims = await claimsTask.ConfigureAwait(false);
 
+            LogSummarisationComplete(analysisId);
+            LogClaimsExtracted(analysisId, claims.Count);
             result.SetSummary(summary);
             await _sink.PublishAsync(
                 new SummaryCompleteEvent(analysisId, DateTimeOffset.UtcNow, summary), linkedCt)
@@ -153,6 +156,7 @@ public sealed partial class AnalysisPipeline
             // Individual claim failures → Unverifiable; they do not fail the pipeline
             currentStage = AnalysisStage.FactChecking;
             var factCheckBag = new ConcurrentBag<FactCheck>();
+            int verifiedCount = 0;
 
             await Parallel.ForEachAsync(
                 claims,
@@ -187,11 +191,13 @@ public sealed partial class AnalysisPipeline
                         LogClaimVerificationFailed(ex, analysisId, claim.Id);
                         factCheck = new FactCheck(
                             claim.Id, Verdict.Unverifiable, Confidence.Low,
-                            "Verification failed.", []);
+                            $"Verification failed: {ex.Message}", []);
                     }
 #pragma warning restore CA1031
 
                     factCheckBag.Add(factCheck);
+                    var n = Interlocked.Increment(ref verifiedCount);
+                    LogClaimVerified(analysisId, claim.Id, factCheck.Verdict, n, claims.Count);
                     await _sink.PublishAsync(
                         new ClaimVerifiedEvent(analysisId, DateTimeOffset.UtcNow, factCheck), claimCt)
                         .ConfigureAwait(false);
@@ -201,10 +207,13 @@ public sealed partial class AnalysisPipeline
             foreach (var fc in factCheckBag)
                 result.AddFactCheck(fc);
 
+            LogFactCheckingComplete(analysisId, factCheckBag.Count);
+
             // Stage 5 — Scoring (deterministic, no failure expected)
             currentStage = AnalysisStage.Scoring;
             var score = _scoringEngine.Calculate(claims, result.FactChecks, domain, transcript.Quality);
             result.SetScore(score); // transitions → Scoring
+            LogScoringComplete(analysisId, score.AggregateScore);
             await _sink.PublishAsync(
                 new ScoringCompleteEvent(analysisId, DateTimeOffset.UtcNow, score), linkedCt)
                 .ConfigureAwait(false);
@@ -267,6 +276,24 @@ public sealed partial class AnalysisPipeline
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Analysis {AnalysisId} claim {ClaimId} verification failed, marking Unverifiable")]
     private partial void LogClaimVerificationFailed(Exception ex, string analysisId, string claimId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Analysis {AnalysisId} claim {ClaimId} verified: {Verdict} ({VerifiedCount}/{TotalCount})")]
+    private partial void LogClaimVerified(string analysisId, string claimId, Verdict verdict, int verifiedCount, int totalCount);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Analysis {AnalysisId} domain detected: {Domain}")]
+    private partial void LogDomainDetected(string analysisId, ContentDomain domain);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Analysis {AnalysisId} summarisation complete")]
+    private partial void LogSummarisationComplete(string analysisId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Analysis {AnalysisId} claims extracted: {ClaimCount} claims")]
+    private partial void LogClaimsExtracted(string analysisId, int claimCount);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Analysis {AnalysisId} fact-checking complete: {CheckCount} claims verified")]
+    private partial void LogFactCheckingComplete(string analysisId, int checkCount);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Analysis {AnalysisId} scoring complete: {Score}")]
+    private partial void LogScoringComplete(string analysisId, double score);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Analysis {AnalysisId} completed successfully")]
     private partial void LogAnalysisCompleted(string analysisId);

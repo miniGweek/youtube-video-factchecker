@@ -131,6 +131,9 @@ internal static class AnalysisEndpoints
             await httpContext.Response.Body.FlushAsync(ct).ConfigureAwait(false);
         }
 
+        int verifiedCount = 0;
+        int totalClaims = 0;
+
         try
         {
             await foreach (var evt in eventSource.SubscribeAsync(id, ct).ConfigureAwait(false))
@@ -170,7 +173,8 @@ internal static class AnalysisEndpoints
 
                     case ClaimsExtractedEvent claims:
                     {
-                        var html = await viewRenderer.RenderPartialAsync(httpContext, "_ClaimsHeader", new ClaimsHeaderModel(claims.Claims.Count, false)).ConfigureAwait(false);
+                        totalClaims = claims.Claims.Count;
+                        var html = await viewRenderer.RenderPartialAsync(httpContext, "_ClaimsHeader", new ClaimsHeaderModel(totalClaims, false, 0)).ConfigureAwait(false);
                         await SendHtmlAsync("ClaimsHeader", html).ConfigureAwait(false);
                         await SendHtmlAsync("Status", "<p aria-busy=\"true\">Verifying claims…</p>").ConfigureAwait(false);
                         break;
@@ -186,6 +190,9 @@ internal static class AnalysisEndpoints
                             var html = await viewRenderer.RenderPartialAsync(httpContext, "_ClaimVerdict", model).ConfigureAwait(false);
                             await SendHtmlAsync("ClaimVerified", html).ConfigureAwait(false);
                         }
+                        verifiedCount++;
+                        var headerHtml = await viewRenderer.RenderPartialAsync(httpContext, "_ClaimsHeader", new ClaimsHeaderModel(totalClaims, false, verifiedCount)).ConfigureAwait(false);
+                        await SendHtmlAsync("ClaimsHeader", headerHtml).ConfigureAwait(false);
                         break;
                     }
 
@@ -195,7 +202,7 @@ internal static class AnalysisEndpoints
                         await SendHtmlAsync("Score", scoreHtml).ConfigureAwait(false);
                         // All claims are now verified — replace the spinning claims header with a done state
                         var claimCount = store.TryGet(id)?.Claims?.Count ?? 0;
-                        var claimsHtml = await viewRenderer.RenderPartialAsync(httpContext, "_ClaimsHeader", new ClaimsHeaderModel(claimCount, true)).ConfigureAwait(false);
+                        var claimsHtml = await viewRenderer.RenderPartialAsync(httpContext, "_ClaimsHeader", new ClaimsHeaderModel(claimCount, true, claimCount)).ConfigureAwait(false);
                         await SendHtmlAsync("ClaimsHeader", claimsHtml).ConfigureAwait(false);
                         await SendHtmlAsync("Status", "<p aria-busy=\"true\">Generating assessment…</p>").ConfigureAwait(false);
                         break;

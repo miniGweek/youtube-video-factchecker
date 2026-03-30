@@ -100,6 +100,31 @@ public class StructuredOutputParserTests
         Assert.Equal("{\"key\":\"val\"}", StructuredOutputParser.ExtractJson(input));
     }
 
+    [Fact]
+    public void ExtractJson_FenceWithLeadingProse_ReturnsInnerContent()
+    {
+        var input = "Here is the verification result:\n```json\n{\"key\":\"val\"}\n```";
+        Assert.Equal("{\"key\":\"val\"}", StructuredOutputParser.ExtractJson(input));
+    }
+
+    [Fact]
+    public void ExtractJson_NoFence_JsonEmbeddedInProse_ExtractsJsonObject()
+    {
+        var input = "The answer is {\"name\":\"test\",\"value\":1} as shown.";
+        Assert.Equal("{\"name\":\"test\",\"value\":1}", StructuredOutputParser.ExtractJson(input));
+    }
+
+    [Fact]
+    public void Parse_JsonWithTrailingComma_Deserializes()
+    {
+        var json = """{"name":"trailing","value":5,}""";
+
+        var result = StructuredOutputParser.Parse<TestPayload>(json);
+
+        Assert.Equal("trailing", result.Name);
+        Assert.Equal(5, result.Value);
+    }
+
     // ── error cases ──────────────────────────────────────────────────────────
 
     [Fact]

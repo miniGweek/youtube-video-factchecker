@@ -10,12 +10,12 @@ namespace FactChecker.Infrastructure.LlmProviders.Common;
 public static class StructuredOutputParser
 {
     private static readonly Regex MarkdownFencePattern =
-        new(@"\A```(?:json)?\s*\n?([\s\S]*?)\n?```", RegexOptions.Compiled);
+        new(@"```(?:json)?\s*\n?([\s\S]*?)\n?```", RegexOptions.Compiled);
 
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
         PropertyNameCaseInsensitive = true,
-        AllowTrailingCommas = false,
+        AllowTrailingCommas = true,
     };
 
     /// <summary>
@@ -39,9 +39,29 @@ public static class StructuredOutputParser
         ArgumentNullException.ThrowIfNull(responseText);
         var trimmed = responseText.Trim();
 
+        // Try markdown fence first (works even with leading prose)
         var match = MarkdownFencePattern.Match(trimmed);
         if (match.Success)
             return match.Groups[1].Value.Trim();
+
+        // Fallback: extract outermost { ... } via brace counting
+        int start = trimmed.IndexOf('{', StringComparison.Ordinal);
+        if (start >= 0)
+        {
+            int depth = 0;
+            bool inString = false;
+            for (int i = start; i < trimmed.Length; i++)
+            {
+                char c = trimmed[i];
+                if (c == '"' && (i == 0 || trimmed[i - 1] != '\\'))
+                    inString = !inString;
+                if (!inString)
+                {
+                    if (c == '{') depth++;
+                    else if (c == '}') { depth--; if (depth == 0) return trimmed[start..(i + 1)]; }
+                }
+            }
+        }
 
         return trimmed;
     }
