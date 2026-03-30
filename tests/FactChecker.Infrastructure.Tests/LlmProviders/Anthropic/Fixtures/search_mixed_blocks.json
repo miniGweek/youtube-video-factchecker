@@ -1,0 +1,48 @@
+{
+  "id": "msg_search_04",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "text",
+      "text": "Let me search for information about this claim."
+    },
+    {
+      "type": "web_search_tool_result",
+      "tool_use_id": "toolu_03",
+      "content": [
+        {
+          "type": "web_search_result",
+          "url": "https://www.nature.com/articles/study123",
+          "title": "Nature Study on Climate",
+          "page_content": "Climate change impacts on global temperatures.",
+          "encrypted_content": ""
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "text": "Based on the search results, this claim is supported."
+    },
+    {
+      "type": "web_search_tool_result",
+      "tool_use_id": "toolu_04",
+      "content": [
+        {
+          "type": "web_search_result",
+          "url": "https://www.science.org/doi/abc",
+          "title": "Science Magazine Report",
+          "page_content": "Additional evidence on climate trends.",
+          "encrypted_content": ""
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "text": "{\"verdict\":\"Supported\",\"confidence\":\"High\",\"reasoning\":\"Strong evidence from multiple sources.\"}"
+    }
+  ],
+  "model": "claude-sonnet-4-20250514",
+  "stop_reason": "end_turn",
+  "usage": { "input_tokens": 600, "output_tokens": 250 }
+}

@@ -1,0 +1,27 @@
+{
+  "id": "msg_search_02",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "web_search_tool_result",
+      "tool_use_id": "toolu_02",
+      "content": [
+        {
+          "type": "web_search_result",
+          "url": "https://www.who.int/health-topics/data",
+          "title": "WHO Health Statistics",
+          "page_content": "Global health data and statistics from WHO.",
+          "encrypted_content": ""
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "text": "The claim is partially supported by available evidence."
+    }
+  ],
+  "model": "claude-sonnet-4-20250514",
+  "stop_reason": "end_turn",
+  "usage": { "input_tokens": 400, "output_tokens": 90 }
+}

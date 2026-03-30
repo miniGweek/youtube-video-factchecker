@@ -1,9 +1,0 @@
-{
-  "id": "msg_summary_01",
-  "type": "message",
-  "role": "assistant",
-  "content": [{ "type": "text", "text": "{\"thesis\":\"Regular exercise significantly reduces the risk of cardiovascular disease.\",\"keyPoints\":[\"30 minutes of moderate exercise 5 days a week reduces heart disease risk by 35%\",\"Both aerobic and resistance training provide cardiovascular benefits\",\"Exercise improves cholesterol levels and blood pressure\"]}" }],
-  "model": "claude-sonnet-4-20250514",
-  "stop_reason": "end_turn",
-  "usage": { "input_tokens": 800, "output_tokens": 80 }
-}

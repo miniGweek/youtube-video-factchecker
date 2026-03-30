@@ -2,10 +2,8 @@ using FactChecker.Core.Interfaces;
 using FactChecker.Core.Options;
 using FactChecker.Core.Pipeline;
 using FactChecker.Core.Scoring;
-using FactChecker.Infrastructure.Anthropic;
-using FactChecker.Infrastructure.Anthropic.Stages;
 using FactChecker.Infrastructure.Events;
-using FactChecker.Infrastructure.Options;
+using FactChecker.Infrastructure.LlmProviders;
 using FactChecker.Infrastructure.Storage;
 using FactChecker.Infrastructure.Validation;
 using FactChecker.Infrastructure.YouTube;
@@ -26,16 +24,6 @@ builder.Host.UseSerilog((ctx, services, cfg) => cfg
 builder.Services.AddOptions<AnalysisOptions>()
     .BindConfiguration("AnalysisOptions");
 
-builder.Services.AddOptions<AnthropicOptions>()
-    .BindConfiguration("AnthropicOptions")
-    .PostConfigure(o =>
-    {
-        // API key from environment variable takes precedence over appsettings
-        var fromEnv = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");
-        if (!string.IsNullOrWhiteSpace(fromEnv))
-            o.ApiKey = fromEnv;
-    });
-
 // Expose AnalysisOptions as a plain class (AnalysisPipeline doesn't use IOptions<T>)
 builder.Services.AddSingleton(sp =>
     sp.GetRequiredService<IOptions<AnalysisOptions>>().Value);
@@ -49,14 +37,9 @@ builder.Services.AddHttpClient();
 builder.Services.AddTransient<IVideoMetadataProvider, YouTubeMetadataProvider>();
 builder.Services.AddTransient<ITranscriptExtractor, YouTubeTranscriptExtractor>();
 
-// ── Infrastructure — Anthropic ────────────────────────────────────────────────
+// ── Infrastructure — LLM Provider + Stages ───────────────────────────────────
 
-builder.Services.AddTransient<AnthropicClientWrapper>();
-builder.Services.AddTransient<IDomainDetector, AnthropicDomainDetector>();
-builder.Services.AddTransient<ISummariser, AnthropicSummariser>();
-builder.Services.AddTransient<IClaimExtractor, AnthropicClaimExtractor>();
-builder.Services.AddTransient<IClaimVerifier, AnthropicClaimVerifier>();
-builder.Services.AddTransient<IAssessmentGenerator, AnthropicAssessmentGenerator>();
+builder.Services.AddLlmProvider(builder.Configuration);
 
 // ── Infrastructure — Validation ───────────────────────────────────────────────
 

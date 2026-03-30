@@ -1,0 +1,26 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\"verdict\": \"Unverifiable\", \"confidence\": \"Low\", \"reasoning\": \"Search returned no results.\"}"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "groundingMetadata": {
+        "groundingChunks": [],
+        "groundingSupports": [],
+        "webSearchQueries": ["some query with no results"]
+      }
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 300,
+    "candidatesTokenCount": 50,
+    "totalTokenCount": 350
+  },
+  "modelVersion": "gemini-2.5-pro"
+}

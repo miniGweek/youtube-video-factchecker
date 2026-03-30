@@ -1,0 +1,21 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\"verdict\": \"Unverifiable\", \"confidence\": \"Low\", \"reasoning\": \"No reliable sources found.\"}"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP"
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 400,
+    "candidatesTokenCount": 80,
+    "totalTokenCount": 480
+  },
+  "modelVersion": "gemini-2.5-pro"
+}

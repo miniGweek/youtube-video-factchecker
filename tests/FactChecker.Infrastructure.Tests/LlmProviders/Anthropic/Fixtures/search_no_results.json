@@ -1,0 +1,14 @@
+{
+  "id": "msg_search_03",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "text",
+      "text": "I was unable to find reliable sources to verify this claim."
+    }
+  ],
+  "model": "claude-sonnet-4-20250514",
+  "stop_reason": "end_turn",
+  "usage": { "input_tokens": 300, "output_tokens": 50 }
+}

@@ -1,9 +1,0 @@
-{
-  "id": "msg_assess_02",
-  "type": "message",
-  "role": "assistant",
-  "content": [{ "type": "text", "text": "{\"recommendation\":\"Skip\",\"reasoning\":\"Multiple central claims were refuted by credible sources. The video presents misinformation on key health topics.\",\"informationDensity\":\"High\",\"caveats\":[\"The claim about vitamin D curing cancer is refuted by medical consensus\",\"Statistics cited about infection rates are incorrect\"]}" }],
-  "model": "claude-haiku-4-5-20251001",
-  "stop_reason": "end_turn",
-  "usage": { "input_tokens": 360, "output_tokens": 75 }
-}

@@ -2,8 +2,8 @@
 
 A web app that takes a YouTube URL and produces: a structured video summary, per-claim fact-checks with source citations, and a watch-worthiness score. Single-instance, stateless (in-memory), no auth required.
 
-**Stack:** C# / .NET 9, ASP.NET Core, Razor Pages, HTMX, Pico CSS, Anthropic Claude API, YoutubeExplode.
-**Tests:** 145 passing (xUnit). All warnings treated as errors.
+**Stack:** C# / .NET 9, ASP.NET Core, Razor Pages, HTMX, Pico CSS, Google Gemini API (default) / Anthropic Claude API (alternate), YoutubeExplode.
+**Tests:** 220 passing (xUnit). All warnings treated as errors.
 
 ---
 
@@ -63,6 +63,7 @@ Pure C#. No NuGet dependencies. Everything here is domain logic only.
 | `ContentDomain` | News, Science, Finance, Health, General |
 | `TranscriptQuality` | Auto, Manual |
 | `WatchRecommendation` | Watch, WatchWithCaution, Skip |
+| `ModelTier` | Fast, Standard, Premium — selects cost/capability tier for LLM calls; provider implementations map each tier to a concrete model string |
 
 ### Interfaces (`Core/Interfaces/`)
 
@@ -136,6 +137,13 @@ The pipeline **never throws** — all errors become `AnalysisFailedEvent`. Indiv
 - `SourceValidationTimeoutSeconds` (5)
 - `PipelineTimeoutSeconds` (120)
 
+**`StageModelOptions.cs`** — configures which `ModelTier` each pipeline stage uses; tunable via `appsettings.json` without code changes:
+- `DomainDetection` → Fast
+- `Summarisation` → Fast
+- `ClaimExtraction` → Standard
+- `ClaimVerification` → Premium
+- `Assessment` → Fast
+
 ---
 
 ## FactChecker.Infrastructure
@@ -151,35 +159,66 @@ Implements all Core interfaces. External dependencies: Anthropic SDK (direct HTT
 | `YouTubeUrlValidator.cs` | Static utility. `TryParseVideoId(Uri, out string)` — validates YouTube URL formats |
 | `TranscriptNotAvailableException.cs` | Thrown when no caption track exists for a video |
 
-### Anthropic (`Infrastructure/Anthropic/`)
+### LLM Provider Abstraction (`Infrastructure/LlmProviders/Common/`)
 
-**`AnthropicClientWrapper.cs`** — shared HTTP client for all LLM calls:
-- Routes to Fast (Haiku) or Standard (Sonnet) model via `ModelTier` enum
-- Polly retry pipeline: exponential backoff with jitter on `HttpRequestException` / `TimeoutException`
-- If JSON parse fails, retries once with a "respond with valid JSON only" nudge
-- `SendAsync<T>()` — sends prompt, deserialises response to `T`
-- `SendWithToolsAsync()` — sends prompt with tool definitions, returns raw JSON
-- Source-generated `[LoggerMessage]` methods log transient vs permanent API errors at Warning/Error level
+Provider-agnostic types shared by all LLM provider implementations. No provider-specific dependencies.
 
-**`ModelTier.cs`** — `Fast` (Haiku, used for: domain detection, assessment) vs `Standard` (Sonnet, used for: summarisation, claim extraction, claim verification with web search)
+| File | What it does |
+|------|-------------|
+| `ILlmClient.cs` | Interface with `CompleteAsync` and `CompleteWithSearchAsync`. Stages depend only on this — never on provider types. |
+| `LlmRequest.cs` | Record: `StageId`, `ModelTier`, `SystemPrompt`, `UserPrompt` |
+| `LlmResponse.cs` | Record: `Content`, `TokenUsage` — result of a standard completion |
+| `LlmSearchResponse.cs` | Record: `Content`, `IReadOnlyList<SearchResultSource>`, `TokenUsage` — result of a search-enabled completion |
+| `SearchResultSource.cs` | Record: `Uri Url`, `Title`, `Snippet` — provider-agnostic search result |
+| `TokenUsage.cs` | Record: `InputTokens`, `OutputTokens` |
+| `StructuredOutputParser.cs` | Static utility. `Parse<T>()` strips markdown code fences and deserialises JSON from LLM response text |
 
-**`StructuredOutputParser.cs`** — strips markdown code fences then calls `JsonSerializer.Deserialize<T>`
+### Gemini (`Infrastructure/LlmProviders/Gemini/`)
 
-**`AnthropicTool.cs`** — record representing a tool definition sent to the API (name, description, input schema)
+Google Gemini API provider implementation. Direct HTTP calls to the Gemini REST API (no Google Cloud SDK).
 
-**`AnthropicException.cs`** — thrown for non-transient API errors (4xx other than 429)
+| File | What it does |
+|------|-------------|
+| `GeminiLlmClient.cs` | Implements `ILlmClient`. `CompleteAsync` sends `generateContent` POST to Gemini API. `CompleteWithSearchAsync` adds `tools: [{ google_search: {} }]`. Maps `ModelTier` to model strings via `GeminiOptions`. Polly retry with exponential backoff on 429/500/503. Source-generated `[LoggerMessage]` methods log model, token counts, latency, grounding source count. |
+| `GeminiOptions.cs` | Config: `ApiKey` (env var only), `FastModel` (gemini-2.5-flash), `StandardModel` (gemini-2.5-flash), `PremiumModel` (gemini-2.5-pro), `EnableSearchGrounding`, `MaxRetries` |
+| `GeminiGroundingParser.cs` | Static class. Extracts `SearchResultSource` records from `groundingMetadata.groundingChunks`. Maps `groundingSupports` segments to snippets. Returns empty list when no grounding metadata. |
+| `GeminiApiException.cs` | Thrown for non-transient Gemini API errors (4xx other than 429) |
 
-**`StagePrompts.cs`** (`Anthropic/Prompts/`) — all prompt templates in one file as string constants
+### Anthropic Provider (`Infrastructure/LlmProviders/Anthropic/`)
 
-**LLM stage implementations** (`Anthropic/Stages/`):
+| File | What it does |
+|------|-------------|
+| `AnthropicLlmClient.cs` | Implements `ILlmClient`. `CompleteAsync` sends Messages API requests. `CompleteWithSearchAsync` uses `web_search_20250305` tool. Maps `ModelTier` to model strings via `AnthropicOptions`. Polly retry with exponential backoff on 429/500/503. Source-generated `[LoggerMessage]` methods. |
+| `AnthropicWebSearchParser.cs` | Static class. Extracts `SearchResultSource` records from interleaved `tool_use`/`tool_result` content blocks in Anthropic web search responses. |
 
-| File | Interface | Model | What it does |
-|------|-----------|-------|-------------|
-| `AnthropicDomainDetector.cs` | `IDomainDetector` | Fast | Single prompt, returns `ContentDomain` |
-| `AnthropicSummariser.cs` | `ISummariser` | Standard | Returns structured `Summary` JSON |
-| `AnthropicClaimExtractor.cs` | `IClaimExtractor` | Standard | Returns list of `Claim` JSON objects |
-| `AnthropicClaimVerifier.cs` | `IClaimVerifier` | Standard | Uses web search tool to look up claims; returns `FactCheck` with sources |
-| `AnthropicAssessmentGenerator.cs` | `IAssessmentGenerator` | Fast | Returns `Assessment` JSON with watch recommendation |
+### Anthropic Legacy (`Infrastructure/Anthropic/`)
+
+Legacy Anthropic infrastructure from the initial build. `AnthropicClientWrapper` and `AnthropicLlmClientAdapter` are retained for backwards compatibility but are no longer used when `LlmProvider` is set to `"Gemini"` (default) or `"Anthropic"` (which uses `AnthropicLlmClient` in `LlmProviders/Anthropic/`).
+
+- **`AnthropicClientWrapper.cs`** — original HTTP client with Polly retry, `SendAsync<T>()`, `SendWithToolsAsync()`
+- **`AnthropicLlmClientAdapter.cs`** — temporary adapter (deprecated) wrapping `AnthropicClientWrapper` as `ILlmClient`
+- **`AnthropicTool.cs`** — tool definition record for API calls
+- **`AnthropicException.cs`** — exception type for non-transient API errors
+- **`ModelTier.cs`** — legacy 2-tier enum (superseded by `Core/Enums/ModelTier.cs`)
+- **`StructuredOutputParser.cs`** — legacy location (superseded by `LlmProviders/Common/StructuredOutputParser.cs`)
+
+### LLM Stage Implementations (`Infrastructure/LlmProviders/Stages/`)
+
+Provider-agnostic stage implementations. Each stage depends only on `ILlmClient` and `StageModelOptions` — no Anthropic or Gemini imports.
+
+| File | Interface | Default Tier | What it does |
+|------|-----------|-------------|-------------|
+| `DomainDetectorStage.cs` | `IDomainDetector` | Fast | Truncates transcript to 1000 words, classifies `ContentDomain` |
+| `SummariserStage.cs` | `ISummariser` | Fast | Returns structured `Summary` with thesis and key points |
+| `ClaimExtractorStage.cs` | `IClaimExtractor` | Standard | Extracts list of `Claim` with importance scores clamped to 1-5 |
+| `ClaimVerifierStage.cs` | `IClaimVerifier` | Premium | Uses `CompleteWithSearchAsync`; maps `SearchResultSource` to domain `Source` records |
+| `AssessmentGeneratorStage.cs` | `IAssessmentGenerator` | Fast | Returns `Assessment` with watch recommendation |
+
+**`StagePrompts.cs`** (`LlmProviders/Stages/Prompts/`) — all prompt templates in one file as string constants. Provider-agnostic.
+
+### DI Registration (`Infrastructure/LlmProviders/`)
+
+**`ServiceCollectionExtensions.cs`** — `AddLlmProvider(IServiceCollection, IConfiguration)` extension method. Reads `"LlmProvider"` config value, registers the appropriate `ILlmClient` implementation (Gemini or Anthropic) as singleton, `StageModelOptions` from config, and all 5 provider-agnostic stage implementations.
 
 ### Events (`Infrastructure/Events/`)
 
@@ -201,6 +240,7 @@ Uses `System.Threading.Channels`: one `Channel<AnalysisEvent>` per analysis ID s
 - `ApiKey` — overridable by `ANTHROPIC_API_KEY` env var (env takes precedence)
 - `FastModel` — `claude-haiku-4-5-20251001`
 - `StandardModel` — `claude-sonnet-4-20250514`
+- `PremiumModel` — `claude-sonnet-4-20250514`
 - `MaxRetries` — 2
 
 ---
@@ -212,9 +252,10 @@ Composition root. Wires DI, exposes HTTP surface.
 ### Program.cs
 
 Configures **Serilog** as the logging provider (`UseSerilog`, reads from `Serilog` config section). Registers all services:
-- `AnalysisOptions` + `AnthropicOptions` from config (env var overrides API key)
+- `AnalysisOptions` from config
 - `IHttpClientFactory` (shared across all HTTP calls)
-- Infrastructure implementations for all Core interfaces
+- LLM provider via `AddLlmProvider(configuration)` — reads `LlmProvider` config, registers `ILlmClient` (Gemini or Anthropic), `StageModelOptions`, and all 5 provider-agnostic stages
+- YouTube extractors, source validator, scoring engine
 - `ChannelEventTransport` as singleton, registered under three interfaces
 - `InMemoryAnalysisStore` as singleton
 - `AnalysisPipeline` as transient
@@ -274,11 +315,8 @@ Minimal API, all routes registered via `MapAnalysisEndpoints()` extension:
 
 ```json
 {
-  "Serilog": {
-    "MinimumLevel": { "Default": "Information", "Override": { "Microsoft": "Warning", "System": "Warning" } },
-    "WriteTo": [{ "Name": "Console", "Args": { "outputTemplate": "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}" } }],
-    "Enrich": [ "FromLogContext" ]
-  },
+  "LlmProvider": "Gemini",
+  "Serilog": { "..." },
   "AnalysisOptions": {
     "MaxVideoDurationMinutes": 45,
     "MaxClaimsToVerify": 15,
@@ -286,15 +324,32 @@ Minimal API, all routes registered via `MapAnalysisEndpoints()` extension:
     "SourceValidationTimeoutSeconds": 5,
     "PipelineTimeoutSeconds": 600
   },
+  "StageModelOptions": {
+    "DomainDetection": "Fast",
+    "Summarisation": "Fast",
+    "ClaimExtraction": "Standard",
+    "ClaimVerification": "Premium",
+    "Assessment": "Fast"
+  },
+  "GeminiOptions": {
+    "FastModel": "gemini-2.5-flash",
+    "StandardModel": "gemini-2.5-flash",
+    "PremiumModel": "gemini-2.5-pro",
+    "EnableSearchGrounding": true,
+    "MaxRetries": 2
+  },
   "AnthropicOptions": {
     "FastModel": "claude-haiku-4-5-20251001",
     "StandardModel": "claude-sonnet-4-20250514",
+    "PremiumModel": "claude-sonnet-4-20250514",
     "MaxRetries": 2
   }
 }
 ```
 
-API key: set `ANTHROPIC_API_KEY` environment variable (takes precedence over `appsettings.json`). `UserSecretsId` is configured in the Web project for local development.
+**Provider switching:** Change `"LlmProvider"` to `"Gemini"` or `"Anthropic"`. No code changes required.
+
+**API keys:** Set `GEMINI_API_KEY` (default provider) or `ANTHROPIC_API_KEY` environment variable. Keys must never be in appsettings.json. `UserSecretsId` is configured in the Web project for local development.
 
 ---
 
@@ -326,7 +381,7 @@ Background: AnalysisPipeline.RunAsync()
 | Project | Count | Approach |
 |---------|-------|---------|
 | `FactChecker.Core.Tests` | 53 | Unit tests. No mocks. Hand-crafted inputs for scoring, state-machine, pipeline (mocked interfaces). |
-| `FactChecker.Infrastructure.Tests` | 79 | Unit tests for LLM stages use **recorded API response fixtures** (JSON files) — no live API calls. Channel transport, URL validator, HTTP source validator tested directly. |
+| `FactChecker.Infrastructure.Tests` | 154 | LLM provider clients tested with **recorded API response fixtures** (JSON files) — no live API calls. Provider-agnostic stages tested with mocked `ILlmClient`. Gemini: 18 client tests + 7 grounding parser tests. Anthropic: 12 client tests + 9 web search parser tests. Stages: 5 stage test classes. Common: 10 StructuredOutputParser tests. Channel transport, URL validator, HTTP source validator tested directly. |
 | `FactChecker.Web.Tests` | 13 | Integration tests via `WebApplicationFactory`. Tests all three API endpoints. |
 
 ---
@@ -336,5 +391,5 @@ Background: AnalysisPipeline.RunAsync()
 - No database — in-memory only (`InMemoryAnalysisStore`)
 - No authentication
 - No JavaScript build pipeline — HTMX + Pico CSS loaded from CDN
-- No LLM framework (LangChain etc.) — direct Anthropic API calls via SDK
+- No LLM framework (LangChain etc.) — direct HTTP calls to Gemini/Anthropic REST APIs via `ILlmClient`
 - No score generation by LLM — scoring is pure deterministic math in `DefaultScoringEngine`

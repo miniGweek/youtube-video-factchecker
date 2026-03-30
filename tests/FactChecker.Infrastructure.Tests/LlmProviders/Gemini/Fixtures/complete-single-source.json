@@ -1,0 +1,43 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\"verdict\": \"PartiallySupported\", \"confidence\": \"Medium\", \"reasoning\": \"One source partially confirms.\"}"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "groundingMetadata": {
+        "groundingChunks": [
+          {
+            "web": {
+              "uri": "https://example.com/single-source",
+              "title": "Single Source Article"
+            }
+          }
+        ],
+        "groundingSupports": [
+          {
+            "segment": {
+              "startIndex": 0,
+              "endIndex": 40,
+              "text": "One source partially confirms this."
+            },
+            "groundingChunkIndices": [0],
+            "confidenceScores": [0.75]
+          }
+        ],
+        "webSearchQueries": ["partial verification query"]
+      }
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 350,
+    "candidatesTokenCount": 60,
+    "totalTokenCount": 410
+  },
+  "modelVersion": "gemini-2.5-pro"
+}

@@ -1,0 +1,22 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\"domain\": \"Science\"}"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "avgLogprobs": -0.05
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 150,
+    "candidatesTokenCount": 25,
+    "totalTokenCount": 175
+  },
+  "modelVersion": "gemini-2.5-flash"
+}

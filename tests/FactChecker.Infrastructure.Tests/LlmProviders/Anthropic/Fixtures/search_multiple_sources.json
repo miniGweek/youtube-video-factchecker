@@ -1,0 +1,34 @@
+{
+  "id": "msg_search_01",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "web_search_tool_result",
+      "tool_use_id": "toolu_01",
+      "content": [
+        {
+          "type": "web_search_result",
+          "url": "https://www.example.com/article1",
+          "title": "Exercise and Heart Health Study",
+          "page_content": "Regular moderate physical activity reduces cardiovascular mortality by 35%.",
+          "encrypted_content": ""
+        },
+        {
+          "type": "web_search_result",
+          "url": "https://www.example.org/research",
+          "title": "Global Health Research",
+          "page_content": "A meta-analysis of 40 studies confirms exercise benefits.",
+          "encrypted_content": ""
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "text": "{\"verdict\":\"Supported\",\"confidence\":\"High\",\"reasoning\":\"Multiple peer-reviewed studies confirm this.\",\"sources\":[{\"url\":\"https://www.example.com/article1\",\"title\":\"Exercise and Heart Health Study\",\"snippet\":\"Regular moderate physical activity reduces cardiovascular mortality by 35%.\"}]}"
+    }
+  ],
+  "model": "claude-sonnet-4-20250514",
+  "stop_reason": "end_turn",
+  "usage": { "input_tokens": 500, "output_tokens": 180 }
+}
