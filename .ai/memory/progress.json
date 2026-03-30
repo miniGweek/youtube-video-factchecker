@@ -1,6 +1,34 @@
 {
-  "lastUpdated": "2026-03-30T18:30:00Z",
+  "lastUpdated": "2026-03-30T21:23:00Z",
   "fixes": [
+    {
+      "id": "fix-003",
+      "description": "LLM calls sent no temperature parameter (defaulting to 1.0), causing non-deterministic claim counts and scores across runs. Fixed by adding Temperature=0.0 to LlmRequest and passing it through AnthropicLlmClient, GeminiLlmClient, and AnthropicClientWrapper.",
+      "date": "2026-03-30",
+      "commit": null,
+      "filesChanged": [
+        "src/FactChecker.Infrastructure/LlmProviders/Common/LlmRequest.cs",
+        "src/FactChecker.Infrastructure/Options/AnthropicOptions.cs",
+        "src/FactChecker.Infrastructure/LlmProviders/Gemini/GeminiOptions.cs",
+        "src/FactChecker.Infrastructure/LlmProviders/Anthropic/AnthropicLlmClient.cs",
+        "src/FactChecker.Infrastructure/LlmProviders/Gemini/GeminiLlmClient.cs",
+        "src/FactChecker.Infrastructure/Anthropic/AnthropicClientWrapper.cs",
+        "src/FactChecker.Web/appsettings.json"
+      ],
+      "architectureImpact": false
+    },
+    {
+      "id": "fix-004",
+      "description": "ClaimVerifierStage silently swallowed JSON parse failures with no logging and no retry. Added ILogger injection, a JSON nudge retry (same pattern as AnthropicClientWrapper), Warning log on first failure, Error log on retry failure.",
+      "date": "2026-03-30",
+      "commit": null,
+      "filesChanged": [
+        "src/FactChecker.Infrastructure/LlmProviders/Stages/ClaimVerifierStage.cs",
+        "tests/FactChecker.Infrastructure.Tests/LlmProviders/Stages/StubLlmClient.cs",
+        "tests/FactChecker.Infrastructure.Tests/LlmProviders/Stages/ClaimVerifierStageTests.cs"
+      ],
+      "architectureImpact": false
+    },
     {
       "id": "fix-001",
       "description": "gemini-3-flash (non-existent) and gemini-2.0-flash (deprecated, EOL June 2026) replaced with gemini-2.5-flash as the Standard model tier. Fast and Standard tiers now both use gemini-2.5-flash; no valid mid-tier Gemini model exists.",
@@ -19,7 +47,7 @@
       "id": "fix-002",
       "description": "StructuredOutputParser regex used \\A anchor, causing JSON parse failure when LLM prefixes response with prose before the markdown fence. Fixed by removing anchor, adding brace-counting fallback extraction, and allowing trailing commas.",
       "date": "2026-03-30",
-      "commit": null,
+      "commit": "70b553b",
       "filesChanged": [
         "src/FactChecker.Infrastructure/LlmProviders/Common/StructuredOutputParser.cs",
         "tests/FactChecker.Infrastructure.Tests/LlmProviders/Common/StructuredOutputParserTests.cs"
@@ -34,7 +62,7 @@
       "file": ".ai/tasks/003-claim-verification-observability.md",
       "status": "complete",
       "tasks": [
-        { "id": "031", "name": "Per-claim logging + progress bar + error reasons", "status": "complete", "commit": null, "date": "2026-03-30", "tests": 158, "notes": "Stage-level logs, per-claim logs with Interlocked counter, progress bar via ClaimsHeaderModel.VerifiedCount, JSON parser hardening included in same PR" }
+        { "id": "031", "name": "Per-claim logging + progress bar + error reasons", "status": "complete", "commit": "70b553b", "date": "2026-03-30", "tests": 158, "notes": "Stage-level logs, per-claim logs with Interlocked counter, progress bar via ClaimsHeaderModel.VerifiedCount, JSON parser hardening included in same PR" }
       ],
       "postNotes": null
     },

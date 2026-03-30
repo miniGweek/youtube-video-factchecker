@@ -86,6 +86,20 @@ public class AnthropicLlmClientTests
         Assert.Contains($"\"model\":\"{expectedModel}\"", capturingHandler.LastRequestBody);
     }
 
+    // ── Temperature ─────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task CompleteAsync_IncludesTemperatureInRequest()
+    {
+        var fixture = LoadFixture("complete_success.json");
+        var capturingHandler = new CapturingHandler(HttpStatusCode.OK, fixture);
+        var client = CreateClient(capturingHandler);
+
+        await client.CompleteAsync(MakeRequest());
+
+        Assert.Contains("\"temperature\":0", capturingHandler.LastRequestBody);
+    }
+
     // ── CompleteWithSearchAsync ──────────────────────────────────────────────
 
     [Fact]

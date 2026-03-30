@@ -53,7 +53,7 @@ public sealed partial class GeminiLlmClient : ILlmClient
         var model = ResolveModel(request.Tier);
         var sw = Stopwatch.StartNew();
 
-        var requestBodyJson = BuildRequestBody(request.SystemPrompt, request.UserPrompt, enableSearch: false, request.MaxTokens);
+        var requestBodyJson = BuildRequestBody(request.SystemPrompt, request.UserPrompt, enableSearch: false, request.MaxTokens, request.Temperature);
         var responseJson = await SendRequestAsync(model, requestBodyJson, ct).ConfigureAwait(false);
 
         var content = ExtractTextContent(responseJson);
@@ -72,7 +72,7 @@ public sealed partial class GeminiLlmClient : ILlmClient
         var model = ResolveModel(request.Tier);
         var sw = Stopwatch.StartNew();
 
-        var requestBodyJson = BuildRequestBody(request.SystemPrompt, request.UserPrompt, enableSearch: true, request.MaxTokens);
+        var requestBodyJson = BuildRequestBody(request.SystemPrompt, request.UserPrompt, enableSearch: true, request.MaxTokens, request.Temperature);
         var responseJson = await SendRequestAsync(model, requestBodyJson, ct).ConfigureAwait(false);
 
         var content = ExtractTextContent(responseJson);
@@ -117,7 +117,7 @@ public sealed partial class GeminiLlmClient : ILlmClient
         return rawJson;
     }
 
-    internal static string BuildRequestBody(string systemPrompt, string userPrompt, bool enableSearch, int maxTokens)
+    internal static string BuildRequestBody(string systemPrompt, string userPrompt, bool enableSearch, int maxTokens, double temperature)
     {
         var body = new System.Text.Json.Nodes.JsonObject
         {
@@ -135,7 +135,8 @@ public sealed partial class GeminiLlmClient : ILlmClient
                 }),
             ["generationConfig"] = new System.Text.Json.Nodes.JsonObject
             {
-                ["maxOutputTokens"] = maxTokens
+                ["maxOutputTokens"] = maxTokens,
+                ["temperature"] = temperature
             }
         };
 

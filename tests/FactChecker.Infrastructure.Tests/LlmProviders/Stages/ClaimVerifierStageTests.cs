@@ -3,6 +3,7 @@ using FactChecker.Core.Models;
 using FactChecker.Core.Options;
 using FactChecker.Infrastructure.LlmProviders.Common;
 using FactChecker.Infrastructure.LlmProviders.Stages;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FactChecker.Infrastructure.Tests.LlmProviders.Stages;
 
@@ -34,12 +35,20 @@ public class ClaimVerifierStageTests
         }
         """;
 
+    private static ClaimVerifierStage CreateVerifier(StubLlmClient client, StageModelOptions? options = null)
+    {
+        var stageOptions = options is not null
+            ? StageTestHelper.CreateOptions(options)
+            : StageTestHelper.CreateOptions();
+        return new ClaimVerifierStage(client, stageOptions, NullLogger<ClaimVerifierStage>.Instance);
+    }
+
     [Fact]
     public async Task VerifyAsync_SupportedResponse_ReturnsSupportedVerdict()
     {
         var client = new StubLlmClient()
             .WithSearchResponse(SupportedVerdictJson);
-        var verifier = new ClaimVerifierStage(client, StageTestHelper.CreateOptions());
+        var verifier = CreateVerifier(client);
 
         var result = await verifier.VerifyAsync(TestClaim, TestSummary, ContentDomain.Health);
 
@@ -59,7 +68,7 @@ public class ClaimVerifierStageTests
         };
         var client = new StubLlmClient()
             .WithSearchResponse(SupportedVerdictJson, providerSources);
-        var verifier = new ClaimVerifierStage(client, StageTestHelper.CreateOptions());
+        var verifier = CreateVerifier(client);
 
         var result = await verifier.VerifyAsync(TestClaim, TestSummary, ContentDomain.Health);
 
@@ -76,7 +85,7 @@ public class ClaimVerifierStageTests
     {
         var client = new StubLlmClient()
             .WithSearchResponse(SupportedVerdictJson);
-        var verifier = new ClaimVerifierStage(client, StageTestHelper.CreateOptions());
+        var verifier = CreateVerifier(client);
 
         var result = await verifier.VerifyAsync(TestClaim, TestSummary, ContentDomain.Health);
 
@@ -96,7 +105,7 @@ public class ClaimVerifierStageTests
             }
             """;
         var client = new StubLlmClient().WithSearchResponse(refutedJson);
-        var verifier = new ClaimVerifierStage(client, StageTestHelper.CreateOptions());
+        var verifier = CreateVerifier(client);
 
         var result = await verifier.VerifyAsync(TestClaim, TestSummary, ContentDomain.Health);
 
@@ -116,7 +125,7 @@ public class ClaimVerifierStageTests
             }
             """;
         var client = new StubLlmClient().WithSearchResponse(unverifiableJson);
-        var verifier = new ClaimVerifierStage(client, StageTestHelper.CreateOptions());
+        var verifier = CreateVerifier(client);
 
         var result = await verifier.VerifyAsync(TestClaim, TestSummary, ContentDomain.Health);
 
@@ -136,24 +145,70 @@ public class ClaimVerifierStageTests
             }
             """;
         var client = new StubLlmClient().WithSearchResponse(notAClaimJson);
-        var verifier = new ClaimVerifierStage(client, StageTestHelper.CreateOptions());
+        var verifier = CreateVerifier(client);
 
         var result = await verifier.VerifyAsync(TestClaim, TestSummary, ContentDomain.Health);
 
         Assert.Equal(Verdict.NotAClaim, result.Verdict);
     }
 
+    // ── JSON retry behaviour ─────────────────────────────────────────────────
+
     [Fact]
-    public async Task VerifyAsync_MalformedJson_FallsBackToUnverifiable()
+    public async Task VerifyAsync_MalformedJson_RetriesBeforeFallingBack()
     {
+        // Both attempts return bad JSON → Unverifiable after 2 calls
         var client = new StubLlmClient()
-            .WithSearchResponse("this is not json at all");
-        var verifier = new ClaimVerifierStage(client, StageTestHelper.CreateOptions());
+            .WithSearchResponseSequence("this is not json at all", "still not json");
+        var verifier = CreateVerifier(client);
 
         var result = await verifier.VerifyAsync(TestClaim, TestSummary, ContentDomain.Health);
 
         Assert.Equal(Verdict.Unverifiable, result.Verdict);
         Assert.Equal(Confidence.Low, result.Confidence);
+        Assert.Equal(2, client.Requests.Count); // initial + retry
+    }
+
+    [Fact]
+    public async Task VerifyAsync_MalformedJsonThenValidJson_ReturnsRetryResult()
+    {
+        var client = new StubLlmClient()
+            .WithSearchResponseSequence("this is not json", SupportedVerdictJson);
+        var verifier = CreateVerifier(client);
+
+        var result = await verifier.VerifyAsync(TestClaim, TestSummary, ContentDomain.Health);
+
+        Assert.Equal(Verdict.Supported, result.Verdict);
+        Assert.Equal(2, client.Requests.Count);
+    }
+
+    [Fact]
+    public async Task VerifyAsync_MalformedJson_RetryIncludesNudgeInSystemPrompt()
+    {
+        var client = new StubLlmClient()
+            .WithSearchResponseSequence("not json", SupportedVerdictJson);
+        var verifier = CreateVerifier(client);
+
+        await verifier.VerifyAsync(TestClaim, TestSummary, ContentDomain.Health);
+
+        // First request uses the standard (non-nudged) prompt
+        Assert.DoesNotContain("not valid JSON", client.Requests[0].SystemPrompt, StringComparison.Ordinal);
+        // Retry request has the nudge appended
+        Assert.Contains("not valid JSON", client.Requests[1].SystemPrompt, StringComparison.Ordinal);
+        Assert.True(client.Requests[1].SystemPrompt.Length > client.Requests[0].SystemPrompt.Length);
+    }
+
+    [Fact]
+    public async Task VerifyAsync_MalformedJsonBothAttempts_FallsBackToUnverifiable()
+    {
+        var client = new StubLlmClient()
+            .WithSearchResponseSequence("bad json 1", "bad json 2");
+        var verifier = CreateVerifier(client);
+
+        var result = await verifier.VerifyAsync(TestClaim, TestSummary, ContentDomain.Health);
+
+        Assert.Equal(Verdict.Unverifiable, result.Verdict);
+        Assert.Equal(2, client.Requests.Count);
     }
 
     [Fact]
@@ -161,7 +216,7 @@ public class ClaimVerifierStageTests
     {
         var client = new StubLlmClient()
             .WithException(new HttpRequestException("API error"));
-        var verifier = new ClaimVerifierStage(client, StageTestHelper.CreateOptions());
+        var verifier = CreateVerifier(client);
 
         var result = await verifier.VerifyAsync(TestClaim, TestSummary, ContentDomain.Health);
 
@@ -172,7 +227,7 @@ public class ClaimVerifierStageTests
     public async Task VerifyAsync_ClaimIdPreserved()
     {
         var client = new StubLlmClient().WithSearchResponse(SupportedVerdictJson);
-        var verifier = new ClaimVerifierStage(client, StageTestHelper.CreateOptions());
+        var verifier = CreateVerifier(client);
 
         var result = await verifier.VerifyAsync(TestClaim, TestSummary, ContentDomain.Health);
 
@@ -183,7 +238,7 @@ public class ClaimVerifierStageTests
     public async Task VerifyAsync_UsesCompleteWithSearchAsync()
     {
         var client = new StubLlmClient().WithSearchResponse(SupportedVerdictJson);
-        var verifier = new ClaimVerifierStage(client, StageTestHelper.CreateOptions());
+        var verifier = CreateVerifier(client);
 
         await verifier.VerifyAsync(TestClaim, TestSummary, ContentDomain.Health);
 
@@ -194,9 +249,8 @@ public class ClaimVerifierStageTests
     [Fact]
     public async Task VerifyAsync_UsesCorrectModelTier()
     {
-        var options = StageTestHelper.CreateOptions(new StageModelOptions { ClaimVerification = ModelTier.Premium });
         var client = new StubLlmClient().WithSearchResponse(SupportedVerdictJson);
-        var verifier = new ClaimVerifierStage(client, options);
+        var verifier = CreateVerifier(client, new StageModelOptions { ClaimVerification = ModelTier.Premium });
 
         await verifier.VerifyAsync(TestClaim, TestSummary, ContentDomain.Health);
 
@@ -216,7 +270,7 @@ public class ClaimVerifierStageTests
         };
         var client = new StubLlmClient()
             .WithSearchResponse(SupportedVerdictJson, providerSources);
-        var verifier = new ClaimVerifierStage(client, StageTestHelper.CreateOptions());
+        var verifier = CreateVerifier(client);
 
         var result = await verifier.VerifyAsync(TestClaim, TestSummary, ContentDomain.Health);
 

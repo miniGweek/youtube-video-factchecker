@@ -10,6 +10,7 @@ internal sealed class StubLlmClient : ILlmClient
 {
     private LlmResponse? _completeResponse;
     private LlmSearchResponse? _searchResponse;
+    private Queue<LlmSearchResponse>? _searchResponseQueue;
     private Exception? _exception;
 
     private readonly List<LlmRequest> _requests = [];
@@ -31,6 +32,17 @@ internal sealed class StubLlmClient : ILlmClient
             content,
             sources ?? Array.Empty<SearchResultSource>(),
             new TokenUsage(200, 100));
+        return this;
+    }
+
+    /// <summary>
+    /// Configures sequential search responses — each call to <see cref="CompleteWithSearchAsync"/>
+    /// dequeues the next response. After the queue is exhausted, falls back to <see cref="WithSearchResponse"/>.
+    /// </summary>
+    public StubLlmClient WithSearchResponseSequence(params string[] contents)
+    {
+        _searchResponseQueue = new Queue<LlmSearchResponse>(
+            contents.Select(c => new LlmSearchResponse(c, Array.Empty<SearchResultSource>(), new TokenUsage(200, 100))));
         return this;
     }
 
@@ -59,6 +71,9 @@ internal sealed class StubLlmClient : ILlmClient
 
         if (_exception is not null)
             throw _exception;
+
+        if (_searchResponseQueue is { Count: > 0 })
+            return Task.FromResult(_searchResponseQueue.Dequeue());
 
         return Task.FromResult(_searchResponse
             ?? throw new InvalidOperationException("No CompleteWithSearchAsync response configured on StubLlmClient."));

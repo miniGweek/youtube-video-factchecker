@@ -53,7 +53,7 @@ public sealed partial class AnthropicLlmClient : ILlmClient
         var sw = Stopwatch.StartNew();
 
         var rawJson = await _retryPipeline.ExecuteAsync(
-            async token => await SendRawAsync(request.SystemPrompt, request.UserPrompt, model, request.MaxTokens, token)
+            async token => await SendRawAsync(request.SystemPrompt, request.UserPrompt, model, request.MaxTokens, request.Temperature, token)
                 .ConfigureAwait(false),
             ct).ConfigureAwait(false);
 
@@ -80,7 +80,7 @@ public sealed partial class AnthropicLlmClient : ILlmClient
         var sw = Stopwatch.StartNew();
 
         var rawJson = await _retryPipeline.ExecuteAsync(
-            async token => await SendRawWebSearchAsync(request.SystemPrompt, request.UserPrompt, model, request.MaxTokens, token)
+            async token => await SendRawWebSearchAsync(request.SystemPrompt, request.UserPrompt, model, request.MaxTokens, request.Temperature, token)
                 .ConfigureAwait(false),
             ct).ConfigureAwait(false);
 
@@ -101,12 +101,14 @@ public sealed partial class AnthropicLlmClient : ILlmClient
         string userMessage,
         string model,
         int maxTokens,
+        double temperature,
         CancellationToken ct)
     {
         var requestObj = new JsonObject
         {
             ["model"] = model,
             ["max_tokens"] = maxTokens,
+            ["temperature"] = temperature,
             ["system"] = systemPrompt,
             ["messages"] = new JsonArray(
                 new JsonObject
@@ -124,12 +126,14 @@ public sealed partial class AnthropicLlmClient : ILlmClient
         string userMessage,
         string model,
         int maxTokens,
+        double temperature,
         CancellationToken ct)
     {
         var requestObj = new JsonObject
         {
             ["model"] = model,
             ["max_tokens"] = maxTokens,
+            ["temperature"] = temperature,
             ["system"] = systemPrompt,
             ["messages"] = new JsonArray(
                 new JsonObject

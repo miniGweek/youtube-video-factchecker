@@ -6,23 +6,34 @@ using FactChecker.Core.Models;
 using FactChecker.Core.Options;
 using FactChecker.Infrastructure.LlmProviders.Common;
 using FactChecker.Infrastructure.LlmProviders.Stages.Prompts;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace FactChecker.Infrastructure.LlmProviders.Stages;
 
-public sealed class ClaimVerifierStage : IClaimVerifier
+public sealed partial class ClaimVerifierStage : IClaimVerifier
 {
     private const string StageId = "ClaimVerification";
 
+    private const string JsonNudgeSuffix =
+        "\n\nIMPORTANT: Your previous response was not valid JSON. " +
+        "Respond ONLY with a valid JSON object. Do not include any text outside the JSON.";
+
     private readonly ILlmClient _client;
     private readonly StageModelOptions _options;
+    private readonly ILogger<ClaimVerifierStage> _logger;
 
-    public ClaimVerifierStage(ILlmClient client, IOptions<StageModelOptions> options)
+    public ClaimVerifierStage(
+        ILlmClient client,
+        IOptions<StageModelOptions> options,
+        ILogger<ClaimVerifierStage> logger)
     {
         ArgumentNullException.ThrowIfNull(client);
         ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(logger);
         _client = client;
         _options = options.Value;
+        _logger = logger;
     }
 
     public async Task<FactCheck> VerifyAsync(
@@ -51,7 +62,37 @@ public sealed class ClaimVerifierStage : IClaimVerifier
         }
 #pragma warning restore CA1031
 
-        return ParseVerificationResponse(claim.Id, searchResponse);
+        var result = TryParseVerificationResponse(claim.Id, searchResponse);
+        if (result is not null)
+            return result;
+
+        // First parse failed — log and retry with a JSON nudge
+        LogJsonParseFailedWillRetry(claim.Id, Truncate(searchResponse.Content));
+
+        var nudgedRequest = request with
+        {
+            SystemPrompt = StagePrompts.ClaimVerification + JsonNudgeSuffix
+        };
+
+        LlmSearchResponse retryResponse;
+        try
+        {
+            retryResponse = await _client.CompleteWithSearchAsync(nudgedRequest, ct).ConfigureAwait(false);
+        }
+#pragma warning disable CA1031 // Intentional: retry provider failure produces Unverifiable
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            LogJsonParseFailedAfterRetry(claim.Id, ex.Message);
+            return UnverifiableFallback(claim.Id, "LLM provider returned an error during verification retry.");
+        }
+#pragma warning restore CA1031
+
+        var retryResult = TryParseVerificationResponse(claim.Id, retryResponse);
+        if (retryResult is not null)
+            return retryResult;
+
+        LogJsonParseFailedAfterRetry(claim.Id, Truncate(retryResponse.Content));
+        return UnverifiableFallback(claim.Id, "Verification response was not valid JSON.");
     }
 
     private static string BuildUserMessage(Claim claim, Summary summary, ContentDomain domain)
@@ -68,7 +109,7 @@ public sealed class ClaimVerifierStage : IClaimVerifier
             """;
     }
 
-    private static FactCheck ParseVerificationResponse(string claimId, LlmSearchResponse searchResponse)
+    private static FactCheck? TryParseVerificationResponse(string claimId, LlmSearchResponse searchResponse)
     {
         try
         {
@@ -114,12 +155,23 @@ public sealed class ClaimVerifierStage : IClaimVerifier
         }
         catch (JsonException)
         {
-            return UnverifiableFallback(claimId, "Verification response was not valid JSON.");
+            return null;
         }
     }
 
     private static FactCheck UnverifiableFallback(string claimId, string reason) =>
         new(claimId, Verdict.Unverifiable, Confidence.Low, reason, []);
+
+    private static string Truncate(string text, int maxLength = 200) =>
+        text.Length <= maxLength ? text : string.Concat(text.AsSpan(0, maxLength), "…");
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "ClaimVerification [{ClaimId}]: JSON parse failed on first attempt — retrying with nudge. Response: {ResponseSnippet}")]
+    private partial void LogJsonParseFailedWillRetry(string claimId, string responseSnippet);
+
+    [LoggerMessage(Level = LogLevel.Error,
+        Message = "ClaimVerification [{ClaimId}]: JSON parse failed after retry — returning Unverifiable. Response: {ResponseSnippet}")]
+    private partial void LogJsonParseFailedAfterRetry(string claimId, string responseSnippet);
 }
 
 #pragma warning disable CA1812

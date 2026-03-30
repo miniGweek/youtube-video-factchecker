@@ -22,11 +22,6 @@ Human commits use the global git config (`dedlok@gmail.com`) — do not touch it
 
 ## PR & Branch Workflow
 
-### During work
-- Default: branch from `main`. Only branch from a feature branch if stacking dependent work — note the dependency in the PR body.
-- Branch naming: `task/<id>-short-description`, `chore/<description>`, `fix/<description>`.
-- Run `./verify.sh` before every commit.
-
 ### When work is complete
 - `./verify.sh` passes, progress.json updated, CODEBASE.md updated if files added/removed.
 - Open a PR via `gh pr create`. Stop. Do not start new work.
@@ -48,11 +43,6 @@ git branch -d <merged-branch>
 # Verify clean state
 git branch
 ```
-
-### Start new work
-- Branch from updated `main` (or the appropriate base if stacking).
-- Create task contract in `.ai/tasks/` before writing code.
-- Update progress.json to `"in-progress"` at task start.
 
 ---
 
@@ -83,7 +73,7 @@ dotnet test                                     # All tests must pass before any
 dotnet run --project src/FactChecker.Web        # Runs on https://localhost:5001
 ```
 
-**Warnings are errors.** `Directory.Build.props` enforces `TreatWarningsAsErrors`. Fix warnings, don't suppress them.
+Warnings are errors — see Critical Rule #8.
 
 ### Verification
 
@@ -127,16 +117,24 @@ When adding any NuGet package:
 
 When picking up any work (task, bug fix, or improvement):
 
-1. **Read the architecture doc** (`.ai/design/architecture.md`).
-2. **For tasks:** find the active task file in `.ai/tasks/`. Read the contract — note dependencies, in-scope files, acceptance criteria.
+0. **Check the current branch.** Run `git branch --show-current`.
+   If on `main`, create and switch to a task branch before doing anything else.
+   Never make changes on `main`.
+   Branch naming: `task/<id>-short-description`, `chore/<description>`, `fix/<description>`.
+1. **Create or locate the task contract.** For new work: create a numbered
+   task file in `.ai/tasks/` with status, acceptance criteria, and scope
+   before writing any code. For existing tasks: find the active task file.
+   Read the contract — note dependencies, in-scope files, acceptance criteria.
+2. **Read the architecture doc** (`.ai/design/architecture.md`).
 3. **Implement code + tests together** — not code first, tests later.
-4. **Verify:** `dotnet build` (zero warnings) → `dotnet test` (all pass) → diff is scoped to the work.
+4. **Verify:** run `./verify.sh`. It must pass with zero errors.
 5. **Commit** using the Commit Protocol above. No exceptions.
 6. **Update progress** — see Progress Tracking below. This is mandatory.
 7. **Update documentation if the change:**
-   - Adds, renames, or deletes a file → update `CODEBASE.md` (the relevant table only).
-   - Changes a public interface, model, or module boundary → flag whether `architecture.md` needs revision. Propose the change, don't decide alone.
-   - Is implementation-only (bug fix inside a method, refactor with no interface change) → no doc update required.
+   - Adds, renames, or deletes a file → update `CODEBASE.md` (only the affected sections).
+   - Changes a public interface, model, or module boundary → flag whether `architecture.md`
+     needs revision. Propose the change, don't decide alone.
+   - Implementation-only (bug fix inside a method, refactor with no interface change) → no doc update required.
 8. **Stop.** Do not chain into the next task or auto-evaluate your own output.
 
 ---
@@ -224,13 +222,5 @@ Increment the `"id"` sequentially. Set `"architectureImpact": true` only if a pu
 - Don't override repo-level git config — identity is set per-commit via `-c` flags.
 - Don't hand-edit `.csproj` package versions from memory — use `dotnet add package` to resolve latest.
 - Don't modify `verify.sh` or `.github/workflows/ci.yml` unless explicitly instructed.
-
----
-
-## Documentation Maintenance
-
-After creating or modifying any source file, check whether `CODEBASE.md` needs updating.
-Only update the sections affected — do not rewrite unchanged sections.
-If you add a new file, add it to the relevant table. If you rename or delete one, remove it.
-
-Architecture changes (interface, model, or module boundary modifications) require flagging for review — propose the change in your output, do not unilaterally update `architecture.md`.
+- Don't make changes on `main`. If on `main`, create a branch first.
+- Don't start implementation without a task contract in `.ai/tasks/`.

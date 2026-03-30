@@ -180,11 +180,12 @@ public sealed class GeminiLlmClientTests
         Assert.Equal("Return JSON.", userText);
 
         // Generation config
-        var maxOutputTokens = root
-            .GetProperty("generationConfig")
-            .GetProperty("maxOutputTokens")
-            .GetInt32();
+        var genConfig = root.GetProperty("generationConfig");
+        var maxOutputTokens = genConfig.GetProperty("maxOutputTokens").GetInt32();
         Assert.Equal(4096, maxOutputTokens);
+
+        var temperature = genConfig.GetProperty("temperature").GetDouble();
+        Assert.Equal(0.0, temperature);
     }
 
     [Fact]
