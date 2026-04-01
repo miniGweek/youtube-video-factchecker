@@ -1,6 +1,20 @@
 {
-  "lastUpdated": "2026-03-30T21:23:00Z",
+  "lastUpdated": "2026-04-01T00:00:00Z",
   "fixes": [
+    {
+      "id": "fix-005",
+      "description": "Transcript text was never surfaced in the UI; users had no way to verify claim accuracy against the source. Added Text property to TranscriptExtractedEvent and rendered it in a collapsible section in _TranscriptInfo.cshtml.",
+      "date": "2026-04-01",
+      "commit": "TBD",
+      "filesChanged": [
+        "src/FactChecker.Core/Events/TranscriptExtractedEvent.cs",
+        "src/FactChecker.Core/Pipeline/AnalysisPipeline.cs",
+        "src/FactChecker.Web/Pages/Shared/_TranscriptInfo.cshtml",
+        "CODEBASE.md",
+        ".ai/tasks/005-transcript-display.md"
+      ],
+      "architectureImpact": true
+    },
     {
       "id": "fix-003",
       "description": "LLM calls sent no temperature parameter (defaulting to 1.0), causing non-deterministic claim counts and scores across runs. Fixed by adding Temperature=0.0 to LlmRequest and passing it through AnthropicLlmClient, GeminiLlmClient, and AnthropicClientWrapper.",

@@ -10,3 +10,7 @@
     <span class="badge" style="background:@qualityBg;color:@qualityColor">@qualityLabel</span>
     &nbsp;@Model.WordCount.ToString("N0", System.Globalization.CultureInfo.InvariantCulture) words
 </small>
+<details style="margin-top:0.5rem">
+    <summary style="cursor:pointer;font-size:0.85rem">Show transcript</summary>
+    <div style="max-height:400px;overflow-y:auto;white-space:pre-wrap;font-size:0.85rem;margin-top:0.5rem;padding:0.75rem;background:var(--pico-card-background-color);border-radius:var(--pico-border-radius)">@Model.Text</div>
+</details>
