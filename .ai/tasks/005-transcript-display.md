@@ -1,6 +1,6 @@
 # Task 005 — Show Transcript Text on Analysis Page
 
-**Status: active**
+**Status: complete**
 
 ## Goal
 

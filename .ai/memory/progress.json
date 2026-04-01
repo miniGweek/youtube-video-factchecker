@@ -5,7 +5,7 @@
       "id": "fix-005",
       "description": "Transcript text was never surfaced in the UI; users had no way to verify claim accuracy against the source. Added Text property to TranscriptExtractedEvent and rendered it in a collapsible section in _TranscriptInfo.cshtml.",
       "date": "2026-04-01",
-      "commit": "TBD",
+      "commit": "8cb28bf",
       "filesChanged": [
         "src/FactChecker.Core/Events/TranscriptExtractedEvent.cs",
         "src/FactChecker.Core/Pipeline/AnalysisPipeline.cs",
