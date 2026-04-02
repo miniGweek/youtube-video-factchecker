@@ -162,6 +162,12 @@ public sealed partial class GeminiLlmClient : ILlmClient
                     ["google_search"] = new System.Text.Json.Nodes.JsonObject()
                 });
         }
+        else
+        {
+            // responseMimeType is incompatible with google_search tool
+            var genConfig = (System.Text.Json.Nodes.JsonObject)body["generationConfig"]!;
+            genConfig["responseMimeType"] = "application/json";
+        }
 
         return body.ToJsonString();
     }

@@ -83,7 +83,10 @@ public sealed partial class ClaimVerifierStage : IClaimVerifier
                     LogEmptyLlmResponseWillRetry(claim.Id, attempt + 1);
 
                 lastWasEmpty = true;
-                currentRequest = baseRequest; // retry with original prompt
+                currentRequest = baseRequest with
+                {
+                    SystemPrompt = StagePrompts.ClaimVerification + BuildRecitationNudge(attempt + 1)
+                };
                 continue;
             }
 
@@ -132,6 +135,12 @@ public sealed partial class ClaimVerifierStage : IClaimVerifier
         $"Parse error: {parseError ?? "unknown"}. " +
         "Respond ONLY with a valid JSON object matching the schema above. " +
         "Do not include any text, markdown fences, or comments outside the JSON.";
+
+    private static string BuildRecitationNudge(int attempt) =>
+        "\n\nIMPORTANT: Your previous response was blocked because it contained too much " +
+        "directly quoted material. Instead of quoting sources verbatim, paraphrase all " +
+        "findings in your own words. Summarise key evidence rather than reproducing it. " +
+        $"This is retry attempt {attempt}.";
 
     private static (FactCheck? Result, string? ParseError) TryParseVerificationResponse(
         string claimId, LlmSearchResponse searchResponse)
@@ -195,7 +204,7 @@ public sealed partial class ClaimVerifierStage : IClaimVerifier
     private partial void LogProviderErrorRetry(string claimId, int attempt, string errorMessage);
 
     [LoggerMessage(Level = LogLevel.Warning,
-        Message = "ClaimVerification [{ClaimId}]: LLM returned empty text content on attempt {Attempt} — retrying with original prompt")]
+        Message = "ClaimVerification [{ClaimId}]: LLM returned empty text content on attempt {Attempt} — retrying with anti-recitation nudge")]
     private partial void LogEmptyLlmResponseWillRetry(string claimId, int attempt);
 
     [LoggerMessage(Level = LogLevel.Error,

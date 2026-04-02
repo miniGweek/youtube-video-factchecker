@@ -300,17 +300,20 @@ public class ClaimVerifierStageTests
     }
 
     [Fact]
-    public async Task VerifyAsync_EmptyContent_RetryUsesOriginalSystemPrompt()
+    public async Task VerifyAsync_EmptyContent_RetryIncludesRecitationNudge()
     {
-        // When content is empty, retry should NOT include a JSON nudge
+        // When content is empty, retry should include an anti-recitation nudge
         var client = new StubLlmClient()
             .WithSearchResponseSequence(string.Empty, SupportedVerdictJson);
         var verifier = CreateVerifier(client);
 
         await verifier.VerifyAsync(TestClaim, TestSummary, ContentDomain.Health);
 
-        // Both requests should have the same system prompt — no JSON nudge appended
-        Assert.Equal(client.Requests[0].SystemPrompt, client.Requests[1].SystemPrompt);
+        // First request uses the standard prompt
+        Assert.DoesNotContain("paraphrase", client.Requests[0].SystemPrompt, StringComparison.OrdinalIgnoreCase);
+        // Retry request has the anti-recitation nudge appended
+        Assert.Contains("paraphrase", client.Requests[1].SystemPrompt, StringComparison.OrdinalIgnoreCase);
+        Assert.True(client.Requests[1].SystemPrompt.Length > client.Requests[0].SystemPrompt.Length);
     }
 
     [Fact]

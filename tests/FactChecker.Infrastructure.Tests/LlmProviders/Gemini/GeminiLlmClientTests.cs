@@ -200,6 +200,9 @@ public sealed class GeminiLlmClientTests
 
         var temperature = genConfig.GetProperty("temperature").GetDouble();
         Assert.Equal(0.0, temperature);
+
+        var responseMimeType = genConfig.GetProperty("responseMimeType").GetString();
+        Assert.Equal("application/json", responseMimeType);
     }
 
     [Fact]
