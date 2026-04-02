@@ -19,7 +19,8 @@ youtube-fact-checker.sln
 │   ├── FactChecker.Core.Tests/
 │   ├── FactChecker.Infrastructure.Tests/
 │   └── FactChecker.Web.Tests/
-├── .ai/                           # AI agent memory, architecture docs, task contracts
+├── CLAUDE.md                      # Claude Code behavioral protocol (auto-discovered)
+├── .ai/                           # Architecture docs, task contracts, progress tracking
 ├── Dockerfile
 └── docker-compose.yml
 ```

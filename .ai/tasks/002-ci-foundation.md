@@ -76,7 +76,7 @@ jobs:
 
 - .NET SDK version `9.0.x` matches all project TargetFramework `net9.0`.
 
-### 3. `.ai/CLAUDE.md` updates
+### 3. `CLAUDE.md` updates
 
 - Add `verify.sh` reference + unmodifiable constraint to "Build & Run" section.
 - Add CI protection rule to "What NOT to Do" section.
@@ -88,8 +88,8 @@ jobs:
 - [ ] `verify.sh` exists at repo root, is executable, passes locally.
 - [ ] `.github/workflows/ci.yml` is valid YAML.
 - [ ] .NET SDK version matches project target framework.
-- [ ] `.ai/CLAUDE.md` updated with verify.sh reference and constraint.
-- [ ] Diff limited to: `verify.sh`, `.github/workflows/ci.yml`, `.ai/CLAUDE.md`, `.ai/tasks/`, `.ai/memory/progress.json`.
+- [ ] `CLAUDE.md` updated with verify.sh reference and constraint.
+- [ ] Diff limited to: `verify.sh`, `.github/workflows/ci.yml`, `CLAUDE.md`, `.ai/tasks/`, `.ai/memory/progress.json`.
 - [ ] Commits use Claude Code author identity.
 
 ---
@@ -98,7 +98,7 @@ jobs:
 
 1. `chore: add task contract for CI foundation (task 002)` — this file
 2. `chore(ci): add verify.sh and GitHub Actions CI workflow` — `verify.sh`, `.github/workflows/ci.yml`
-3. `docs(claude): add verify.sh reference and CI protection rules` — `.ai/CLAUDE.md`
+3. `docs(claude): add verify.sh reference and CI protection rules` — `CLAUDE.md`
 4. `chore: mark task 002 complete in progress.json` — `.ai/memory/progress.json`
 
 ---
