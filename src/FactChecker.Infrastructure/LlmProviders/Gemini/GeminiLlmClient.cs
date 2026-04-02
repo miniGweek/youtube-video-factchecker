@@ -150,7 +150,8 @@ public sealed partial class GeminiLlmClient : ILlmClient
             ["generationConfig"] = new System.Text.Json.Nodes.JsonObject
             {
                 ["maxOutputTokens"] = maxTokens,
-                ["temperature"] = temperature
+                ["temperature"] = temperature,
+                ["responseMimeType"] = "application/json"
             }
         };
 

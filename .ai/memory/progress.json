@@ -1,6 +1,19 @@
 {
-  "lastUpdated": "2026-04-01T00:00:00Z",
+  "lastUpdated": "2026-04-02T00:00:00Z",
   "fixes": [
+    {
+      "id": "fix-006",
+      "description": "Gemini RECITATION filter caused empty responses on claim verification; retries sent identical requests (fragile). Added responseMimeType=application/json to Gemini generationConfig to prevent JSON parse failures. Added anti-recitation nudge to empty-response retry prompt instead of resending identical request.",
+      "date": "2026-04-02",
+      "commit": "pending",
+      "filesChanged": [
+        "src/FactChecker.Infrastructure/LlmProviders/Gemini/GeminiLlmClient.cs",
+        "src/FactChecker.Infrastructure/LlmProviders/Stages/ClaimVerifierStage.cs",
+        "tests/FactChecker.Infrastructure.Tests/LlmProviders/Gemini/GeminiLlmClientTests.cs",
+        "tests/FactChecker.Infrastructure.Tests/LlmProviders/Stages/ClaimVerifierStageTests.cs"
+      ],
+      "architectureImpact": false
+    },
     {
       "id": "fix-005",
       "description": "Transcript text was never surfaced in the UI; users had no way to verify claim accuracy against the source. Added Text property to TranscriptExtractedEvent and rendered it in a collapsible section in _TranscriptInfo.cshtml.",
