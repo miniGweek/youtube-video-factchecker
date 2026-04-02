@@ -106,7 +106,7 @@ public sealed partial class AnalysisPipeline
             result.SetTranscript(transcript);
             LogTranscriptExtracted(analysisId, transcript.WordCount, transcript.Quality);
             await _sink.PublishAsync(
-                new TranscriptExtractedEvent(analysisId, DateTimeOffset.UtcNow, transcript.Quality, transcript.WordCount),
+                new TranscriptExtractedEvent(analysisId, DateTimeOffset.UtcNow, transcript.Quality, transcript.WordCount, transcript.Text),
                 linkedCt)
                 .ConfigureAwait(false);
 

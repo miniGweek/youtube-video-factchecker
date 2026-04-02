@@ -6,5 +6,6 @@ public record TranscriptExtractedEvent(
     string AnalysisId,
     DateTimeOffset Timestamp,
     TranscriptQuality Quality,
-    int WordCount)
+    int WordCount,
+    string Text)
     : AnalysisEvent(AnalysisId, Timestamp);

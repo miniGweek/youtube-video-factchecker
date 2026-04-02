@@ -57,11 +57,13 @@ These documents are the source of truth for project structure, pipeline flow, co
 
 ---
 
-## Memory
+## Progress & Session State
 
-Save all memory files to `.ai/memory/` (in the project root).
-The index file is `.ai/memory/MEMORY.md`. Use the same frontmatter format (name, description, type) and content conventions.
 Task progress is tracked in `.ai/memory/progress.json` — see Progress Tracking section below.
+Session-specific state (resume logs, draft plans) also lives in `.ai/memory/`.
+The index at `.ai/memory/MEMORY.md` tracks these project artifacts.
+
+Do not confuse this with Claude Code's auto-memory system — let auto-memory manage its own storage.
 
 ---
 

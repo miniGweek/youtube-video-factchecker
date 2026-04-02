@@ -19,7 +19,8 @@ youtube-fact-checker.sln
 │   ├── FactChecker.Core.Tests/
 │   ├── FactChecker.Infrastructure.Tests/
 │   └── FactChecker.Web.Tests/
-├── .ai/                           # AI agent memory, architecture docs, task contracts
+├── CLAUDE.md                      # Claude Code behavioral protocol (auto-discovered)
+├── .ai/                           # Architecture docs, task contracts, progress tracking
 ├── Dockerfile
 └── docker-compose.yml
 ```
@@ -90,7 +91,7 @@ One record per pipeline stage. All inherit `AnalysisEvent` (base record with `An
 | Event | Fired when |
 |-------|-----------|
 | `AnalysisStartedEvent` | Metadata fetched; carries `VideoInfo` |
-| `TranscriptExtractedEvent` | Transcript ready; carries quality + word count |
+| `TranscriptExtractedEvent` | Transcript ready; carries quality, word count, and full transcript text |
 | `DomainDetectedEvent` | Domain classified; carries `ContentDomain` |
 | `SummaryCompleteEvent` | Summary ready; carries `Summary` |
 | `ClaimsExtractedEvent` | Claims ready; carries the full `IReadOnlyList<Claim>` |
@@ -286,7 +287,7 @@ Minimal API, all routes registered via `MapAnalysisEndpoints()` extension:
 | Partial | Model type | Renders |
 |---------|-----------|---------|
 | `_VideoHeader.cshtml` | `VideoInfo` | Thumbnail, title, channel, duration |
-| `_TranscriptInfo.cshtml` | `TranscriptExtractedEvent` | Word count, quality badge |
+| `_TranscriptInfo.cshtml` | `TranscriptExtractedEvent` | Quality badge, word count, collapsible full transcript text |
 | `_DomainBadge.cshtml` | `ContentDomain` | Coloured pill badge |
 | `_Summary.cshtml` | `Summary` | Key points list, main topics, audience |
 | `_ClaimsHeader.cshtml` | `int` (claim count) | "N claims to verify" heading |
