@@ -5,7 +5,7 @@
       "id": "fix-006",
       "description": "Gemini RECITATION filter caused empty responses on claim verification; retries sent identical requests (fragile). Added responseMimeType=application/json to Gemini generationConfig to prevent JSON parse failures. Added anti-recitation nudge to empty-response retry prompt instead of resending identical request.",
       "date": "2026-04-02",
-      "commit": "pending",
+      "commit": "8022e16",
       "filesChanged": [
         "src/FactChecker.Infrastructure/LlmProviders/Gemini/GeminiLlmClient.cs",
         "src/FactChecker.Infrastructure/LlmProviders/Stages/ClaimVerifierStage.cs",
