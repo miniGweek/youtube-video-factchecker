@@ -67,6 +67,12 @@ builder.Services.AddSingleton<IAnalysisStore, InMemoryAnalysisStore>();
 
 builder.Services.AddTransient<AnalysisPipeline>();
 
+// ── Background processing ────────────────────────────────────────────────────
+
+builder.Services.AddSingleton<BackgroundAnalysisRunner>();
+builder.Services.AddSingleton<IAnalysisDispatcher>(sp => sp.GetRequiredService<BackgroundAnalysisRunner>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<BackgroundAnalysisRunner>());
+
 // ── ASP.NET Core ──────────────────────────────────────────────────────────────
 
 builder.Services.AddRazorPages();

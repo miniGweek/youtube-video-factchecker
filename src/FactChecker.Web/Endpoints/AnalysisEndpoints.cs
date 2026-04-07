@@ -27,10 +27,9 @@ internal static class AnalysisEndpoints
     }
 
     // POST /api/analyse
-    private static IResult PostAnalyse(
+    private static async Task<IResult> PostAnalyse(
         [FromBody] AnalyseRequest? request,
-        IAnalysisStore store,
-        AnalysisPipeline pipeline)
+        IAnalysisDispatcher queue)
     {
         if (request?.Url is not { } videoUri)
             return Results.BadRequest(new { error = "Missing or empty 'url' field." });
@@ -40,8 +39,7 @@ internal static class AnalysisEndpoints
 
         var analysisId = Guid.NewGuid().ToString("N");
 
-        // Fire and forget — pipeline publishes events and never throws
-        _ = Task.Run(() => pipeline.RunAsync(analysisId, videoUri));
+        await queue.EnqueueAsync(analysisId, videoUri).ConfigureAwait(false);
 
         return Results.Accepted($"/api/analyse/{analysisId}", new { analysisId });
     }
