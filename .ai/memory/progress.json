@@ -1,9 +1,21 @@
 {
-  "lastUpdated": "2026-04-07T15:50:00Z",
+  "lastUpdated": "2026-04-07T16:10:00Z",
   "fixes": [
     {
-      "id": "fix-007",
-      "description": "LLM returned JavaScript-style unquoted property names in ClaimExtractorStage JSON (e.g., `property: \"value\"` instead of `\"property\": \"value\"`). System.Text.Json rejected these. Added regex-based repair in StructuredOutputParser.RepairCommonQuirks to quote bare identifier keys before deserialization.",
+      "id": "fix-009",
+      "description": "Two bugs: (1) StructuredOutputParser regex matched identifiers inside string values preceded by commas (e.g. 'study, paragraph: about X' → corrupted JSON), causing 'p is invalid start of property name' crash at claims[5]. Replaced regex with a character-by-character scanner that skips string contents. (2) YouTubeTranscriptExtractor picked first manual track regardless of language; videos with Chinese manual captions and English auto-generated captions returned Chinese text. Now prefers English (manual then auto) before falling back to any language.",
+      "date": "2026-04-07",
+      "commit": "2d6a1cd",
+      "filesChanged": [
+        "src/FactChecker.Infrastructure/LlmProviders/Common/StructuredOutputParser.cs",
+        "src/FactChecker.Infrastructure/YouTube/YouTubeTranscriptExtractor.cs",
+        "tests/FactChecker.Infrastructure.Tests/LlmProviders/Common/StructuredOutputParserTests.cs"
+      ],
+      "architectureImpact": false
+    },
+    {
+      "id": "fix-008",
+      "description": "LLM returned JavaScript-style unquoted property names in ClaimExtractorStage JSON (e.g., `property: \"value\"` instead of `\"property\": \"value\"`). System.Text.Json rejected these. Added regex-based repair in StructuredOutputParser.RepairCommonQuirks to quote bare identifier keys before deserialization. (Superseded by fix-009 which replaced the regex with a string-aware scanner.)",
       "date": "2026-04-07",
       "commit": "c468234",
       "filesChanged": [
