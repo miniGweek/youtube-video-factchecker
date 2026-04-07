@@ -1,6 +1,17 @@
 {
-  "lastUpdated": "2026-04-07T00:00:00Z",
+  "lastUpdated": "2026-04-07T15:50:00Z",
   "fixes": [
+    {
+      "id": "fix-007",
+      "description": "LLM returned JavaScript-style unquoted property names in ClaimExtractorStage JSON (e.g., `property: \"value\"` instead of `\"property\": \"value\"`). System.Text.Json rejected these. Added regex-based repair in StructuredOutputParser.RepairCommonQuirks to quote bare identifier keys before deserialization.",
+      "date": "2026-04-07",
+      "commit": "c468234",
+      "filesChanged": [
+        "src/FactChecker.Infrastructure/LlmProviders/Common/StructuredOutputParser.cs",
+        "tests/FactChecker.Infrastructure.Tests/LlmProviders/Common/StructuredOutputParserTests.cs"
+      ],
+      "architectureImpact": false
+    },
     {
       "id": "fix-006",
       "description": "Gemini RECITATION filter caused empty responses on claim verification; retries sent identical requests (fragile). Added responseMimeType=application/json to Gemini generationConfig to prevent JSON parse failures. Added anti-recitation nudge to empty-response retry prompt instead of resending identical request.",
@@ -96,7 +107,7 @@
         { "id": "075", "name": "Batch 5: Memory eviction for store + event transport", "status": "complete", "commit": "d3dfad7", "date": "2026-04-07", "tests": 222, "notes": "Timer-based eviction for InMemoryAnalysisStore, subscriber-based cleanup for ChannelEventTransport" },
         { "id": "076", "name": "Batch 6: Analysis deduplication", "status": "complete", "commit": "f5f9ac9", "date": "2026-04-07", "tests": 222, "notes": "TryGetActiveByVideoId + TrackVideoId on IAnalysisStore. Same video ID returns existing in-progress analysis." }
       ],
-      "postNotes": "222 tests (down from 240 due to 18 deleted legacy/placeholder tests). P2 items deferred to .ai/tasks/future-improvements.md."
+      "postNotes": "224 tests (down from 240 due to 18 deleted legacy/placeholder tests, +2 new parser tests). fix-007 added post-task for unquoted JSON property names. P2 items deferred to .ai/tasks/future-improvements.md."
     },
     {
       "id": "004",
