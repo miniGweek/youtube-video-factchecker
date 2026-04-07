@@ -459,5 +459,7 @@ public class AnalysisPipelineTests
 
         public void Add(AnalysisResult result) => _results[result.Id] = result;
         public AnalysisResult? TryGet(string id) => _results.TryGetValue(id, out var r) ? r : null;
+        public string? TryGetActiveByVideoId(string videoId) => null;
+        public void TrackVideoId(string videoId, string analysisId) { }
     }
 }

@@ -15,6 +15,7 @@ namespace FactChecker.Infrastructure.Storage;
 public sealed class InMemoryAnalysisStore : IAnalysisStore, IDisposable
 {
     private readonly ConcurrentDictionary<string, Entry> _entries = new();
+    private readonly ConcurrentDictionary<string, string> _videoIdToAnalysisId = new();
     private readonly Timer _evictionTimer;
     private readonly int _retentionMinutes;
 
@@ -37,6 +38,29 @@ public sealed class InMemoryAnalysisStore : IAnalysisStore, IDisposable
         return _entries.TryGetValue(id, out var entry) ? entry.Result : null;
     }
 
+    public void TrackVideoId(string videoId, string analysisId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(videoId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(analysisId);
+        _videoIdToAnalysisId[videoId] = analysisId;
+    }
+
+    public string? TryGetActiveByVideoId(string videoId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(videoId);
+        if (!_videoIdToAnalysisId.TryGetValue(videoId, out var analysisId))
+            return null;
+
+        // Only return if the analysis is still in progress
+        if (_entries.TryGetValue(analysisId, out var entry)
+            && entry.Result.Status is not (AnalysisStatus.Complete or AnalysisStatus.Failed))
+        {
+            return analysisId;
+        }
+
+        return null;
+    }
+
     private void Evict(object? state)
     {
         var cutoff = DateTimeOffset.UtcNow.AddMinutes(-_retentionMinutes);
@@ -46,6 +70,9 @@ public sealed class InMemoryAnalysisStore : IAnalysisStore, IDisposable
                 && entry.CreatedAt <= cutoff)
             {
                 _entries.TryRemove(id, out _);
+                // Clean up videoId mapping for evicted entries
+                if (entry.Result.Video is { } video)
+                    _videoIdToAnalysisId.TryRemove(video.VideoId, out _);
             }
         }
     }

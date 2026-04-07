@@ -29,15 +29,22 @@ internal static class AnalysisEndpoints
     // POST /api/analyse
     private static async Task<IResult> PostAnalyse(
         [FromBody] AnalyseRequest? request,
-        IAnalysisDispatcher queue)
+        IAnalysisDispatcher queue,
+        IAnalysisStore store)
     {
         if (request?.Url is not { } videoUri)
             return Results.BadRequest(new { error = "Missing or empty 'url' field." });
 
-        if (!YouTubeUrlValidator.TryParseVideoId(videoUri, out _))
+        if (!YouTubeUrlValidator.TryParseVideoId(videoUri, out var videoId))
             return Results.BadRequest(new { error = "URL does not appear to be a valid YouTube video URL." });
 
+        // Return existing in-progress analysis for the same video
+        var existingId = store.TryGetActiveByVideoId(videoId);
+        if (existingId is not null)
+            return Results.Accepted($"/api/analyse/{existingId}", new { analysisId = existingId });
+
         var analysisId = Guid.NewGuid().ToString("N");
+        store.TrackVideoId(videoId, analysisId);
 
         await queue.EnqueueAsync(analysisId, videoUri).ConfigureAwait(false);
 
