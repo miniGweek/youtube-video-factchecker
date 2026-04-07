@@ -173,6 +173,49 @@ public class StructuredOutputParserTests
         Assert.Equal(7, result.Value);
     }
 
+    [Fact]
+    public void Parse_ColonAfterCommaInsideStringValue_DoesNotCorruptJson()
+    {
+        // The previous regex-based repair would match 'paragraph' after the comma
+        // inside the string value and corrupt the JSON by wrapping it in quotes,
+        // causing 'p' to appear as an unquoted property name after parse.
+        var json = """{"name": "study, paragraph: about vitamins", "value": 1}""";
+
+        var result = StructuredOutputParser.Parse<TestPayload>(json);
+
+        Assert.Equal("study, paragraph: about vitamins", result.Name);
+        Assert.Equal(1, result.Value);
+    }
+
+    [Fact]
+    public void Parse_UnquotedKeyInSixthArrayElement_Deserializes()
+    {
+        // Regression: claims[5] (0-indexed) crashed when the context field of an
+        // earlier claim contained ", word: ..." which the regex wrongly "repaired",
+        // causing the key of this element to appear unquoted to the JSON parser.
+        var json = """
+            {
+              "items": [
+                {"name": "1", "value": 1},
+                {"name": "2", "value": 2},
+                {"name": "3", "value": 3},
+                {"name": "4", "value": 4},
+                {"name": "5, protein: dense", "value": 5},
+                {name: "6", value: 6}
+              ]
+            }
+            """;
+
+        var result = StructuredOutputParser.Parse<TestItemList>(json);
+
+        Assert.Equal(6, result.Items.Count);
+        Assert.Equal("5, protein: dense", result.Items[4].Name);
+        Assert.Equal("6", result.Items[5].Name);
+        Assert.Equal(6, result.Items[5].Value);
+    }
+
+    private record TestItemList(List<TestPayload> Items);
+
     // ── error cases ──────────────────────────────────────────────────────────
 
     [Fact]
