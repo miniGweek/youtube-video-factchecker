@@ -5,7 +5,9 @@ using FactChecker.Core.Enums;
 using FactChecker.Core.Events;
 using FactChecker.Core.Interfaces;
 using FactChecker.Core.Models;
+using FactChecker.Core.Options;
 using FactChecker.Core.Pipeline;
+using Microsoft.Extensions.Options;
 using FactChecker.Infrastructure.Events;
 using FactChecker.Infrastructure.Storage;
 using FactChecker.Web.Services;
@@ -95,7 +97,7 @@ public class AnalysisEndpointTests : IClassFixture<WebApplicationFactory<Program
     [Fact]
     public async Task GetById_RunningAnalysis_Returns202()
     {
-        var store = new InMemoryAnalysisStore();
+        var store = new InMemoryAnalysisStore(Options.Create(new AnalysisOptions()));
         var result = new AnalysisResult("test-id");
         store.Add(result);
         var client = CreateClientWithStore(store);
@@ -108,7 +110,7 @@ public class AnalysisEndpointTests : IClassFixture<WebApplicationFactory<Program
     [Fact]
     public async Task GetById_CompleteAnalysis_Returns200()
     {
-        var store = new InMemoryAnalysisStore();
+        var store = new InMemoryAnalysisStore(Options.Create(new AnalysisOptions()));
         var result = BuildCompleteResult("done-id");
         store.Add(result);
         var client = CreateClientWithStore(store);
@@ -121,7 +123,7 @@ public class AnalysisEndpointTests : IClassFixture<WebApplicationFactory<Program
     [Fact]
     public async Task GetById_FailedAnalysis_Returns200()
     {
-        var store = new InMemoryAnalysisStore();
+        var store = new InMemoryAnalysisStore(Options.Create(new AnalysisOptions()));
         var result = new AnalysisResult("fail-id");
         result.Fail(AnalysisStage.Summarisation, "Something went wrong.");
         store.Add(result);
