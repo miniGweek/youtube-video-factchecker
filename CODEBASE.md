@@ -192,17 +192,7 @@ Google Gemini API provider implementation. Direct HTTP calls to the Gemini REST 
 |------|-------------|
 | `AnthropicLlmClient.cs` | Implements `ILlmClient`. `CompleteAsync` sends Messages API requests. `CompleteWithSearchAsync` uses `web_search_20250305` tool. Maps `ModelTier` to model strings via `AnthropicOptions`. Polly retry with exponential backoff on 429/500/503. Source-generated `[LoggerMessage]` methods. |
 | `AnthropicWebSearchParser.cs` | Static class. Extracts `SearchResultSource` records from interleaved `tool_use`/`tool_result` content blocks in Anthropic web search responses. |
-
-### Anthropic Legacy (`Infrastructure/Anthropic/`)
-
-Legacy Anthropic infrastructure from the initial build. `AnthropicClientWrapper` and `AnthropicLlmClientAdapter` are retained for backwards compatibility but are no longer used when `LlmProvider` is set to `"Gemini"` (default) or `"Anthropic"` (which uses `AnthropicLlmClient` in `LlmProviders/Anthropic/`).
-
-- **`AnthropicClientWrapper.cs`** — original HTTP client with Polly retry, `SendAsync<T>()`, `SendWithToolsAsync()`
-- **`AnthropicLlmClientAdapter.cs`** — temporary adapter (deprecated) wrapping `AnthropicClientWrapper` as `ILlmClient`
-- **`AnthropicTool.cs`** — tool definition record for API calls
-- **`AnthropicException.cs`** — exception type for non-transient API errors
-- **`ModelTier.cs`** — legacy 2-tier enum (superseded by `Core/Enums/ModelTier.cs`)
-- **`StructuredOutputParser.cs`** — legacy location (superseded by `LlmProviders/Common/StructuredOutputParser.cs`)
+| `AnthropicException.cs` | Exception type for non-transient Anthropic API errors. Carries `StatusCode` and `ErrorType`. |
 
 ### LLM Stage Implementations (`Infrastructure/LlmProviders/Stages/`)
 
@@ -302,7 +292,11 @@ Minimal API, all routes registered via `MapAnalysisEndpoints()` extension:
 
 ### Services (`Web/Services/`)
 
-**`ViewRenderer.cs`** — renders a named Razor partial to an HTML string using `IRazorViewEngine`. Used by `GetHtmlStream` to generate HTML fragments from event data without a full page render.
+| File | What it does |
+|------|-------------|
+| `ViewRenderer.cs` | Renders a named Razor partial to an HTML string using `IRazorViewEngine`. Used by `GetHtmlStream` to generate HTML fragments from event data without a full page render. |
+| `IAnalysisQueue.cs` | `IAnalysisDispatcher` interface — abstraction over the channel that feeds work items to `BackgroundAnalysisRunner`. Single method: `EnqueueAsync(analysisId, videoUri)`. |
+| `BackgroundAnalysisRunner.cs` | `BackgroundService` that processes analysis work items from a bounded `Channel`. Replaces fire-and-forget `Task.Run()`. Creates a scoped `AnalysisPipeline` per work item. Supports graceful shutdown via `ApplicationStopping` cancellation. |
 
 ### Models (`Web/Models/`)
 

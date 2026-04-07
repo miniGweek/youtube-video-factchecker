@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-04-02T00:00:00Z",
+  "lastUpdated": "2026-04-07T00:00:00Z",
   "fixes": [
     {
       "id": "fix-006",
@@ -83,6 +83,21 @@
     }
   ],
   "taskSets": [
+    {
+      "id": "007",
+      "name": "Codebase Audit Cleanup (P0 + P1)",
+      "file": ".ai/tasks/007-audit-cleanup.md",
+      "status": "complete",
+      "tasks": [
+        { "id": "071", "name": "Batch 1: Dockerfile fix, dead config, placeholder tests", "status": "complete", "commit": "9837cd6", "date": "2026-04-07", "tests": 222, "notes": "Dockerfile 8.0→9.0, DefaultTemperature removed, placeholder tests deleted" },
+        { "id": "072", "name": "Batch 2: Legacy Anthropic cleanup + parser escape fix", "status": "complete", "commit": "bb5800b", "date": "2026-04-07", "tests": 222, "notes": "6 legacy files deleted (-904 lines), AnthropicException moved, StructuredOutputParser backslash counting fixed" },
+        { "id": "073", "name": "Batch 3: BackgroundService replaces Task.Run", "status": "complete", "commit": "88bc379", "date": "2026-04-07", "tests": 222, "notes": "BackgroundAnalysisRunner + IAnalysisDispatcher, bounded Channel, graceful shutdown. Web test fakes simplified." },
+        { "id": "074", "name": "Batch 4: API key validation + /health endpoint", "status": "complete", "commit": "570a35d", "date": "2026-04-07", "tests": 222, "notes": "Options.Validate() for API keys, AddHealthChecks + MapHealthChecks" },
+        { "id": "075", "name": "Batch 5: Memory eviction for store + event transport", "status": "complete", "commit": "d3dfad7", "date": "2026-04-07", "tests": 222, "notes": "Timer-based eviction for InMemoryAnalysisStore, subscriber-based cleanup for ChannelEventTransport" },
+        { "id": "076", "name": "Batch 6: Analysis deduplication", "status": "complete", "commit": "f5f9ac9", "date": "2026-04-07", "tests": 222, "notes": "TryGetActiveByVideoId + TrackVideoId on IAnalysisStore. Same video ID returns existing in-progress analysis." }
+      ],
+      "postNotes": "222 tests (down from 240 due to 18 deleted legacy/placeholder tests). P2 items deferred to .ai/tasks/future-improvements.md."
+    },
     {
       "id": "004",
       "name": "LLM Determinism + JSON Retry & Logging",
