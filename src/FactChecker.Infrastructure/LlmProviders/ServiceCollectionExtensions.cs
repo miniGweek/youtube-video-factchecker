@@ -41,7 +41,10 @@ public static class ServiceCollectionExtensions
                         var fromEnv = Environment.GetEnvironmentVariable("GEMINI_API_KEY");
                         if (!string.IsNullOrWhiteSpace(fromEnv))
                             o.ApiKey = fromEnv;
-                    });
+                    })
+                    .Validate(
+                        o => !string.IsNullOrWhiteSpace(o.ApiKey),
+                        "Gemini API key is required. Set the GEMINI_API_KEY environment variable.");
                 services.AddSingleton<ILlmClient, GeminiLlmClient>();
                 break;
 
@@ -53,7 +56,10 @@ public static class ServiceCollectionExtensions
                         var fromEnv = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");
                         if (!string.IsNullOrWhiteSpace(fromEnv))
                             o.ApiKey = fromEnv;
-                    });
+                    })
+                    .Validate(
+                        o => !string.IsNullOrWhiteSpace(o.ApiKey),
+                        "Anthropic API key is required. Set the ANTHROPIC_API_KEY environment variable.");
                 services.AddSingleton<ILlmClient, AnthropicLlmClient>();
                 break;
 

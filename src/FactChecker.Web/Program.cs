@@ -78,6 +78,8 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<BackgroundAnalysis
 builder.Services.AddRazorPages();
 builder.Services.AddTransient<ViewRenderer>();
 
+builder.Services.AddHealthChecks();
+
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -99,6 +101,7 @@ app.UseStaticFiles();
 app.UseCors();
 app.UseRouting();
 app.MapRazorPages();
+app.MapHealthChecks("/health");
 app.MapAnalysisEndpoints();
 
 app.Run();
