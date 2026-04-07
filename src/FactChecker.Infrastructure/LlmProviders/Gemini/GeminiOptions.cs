@@ -12,5 +12,4 @@ public class GeminiOptions
     public string PremiumModel { get; set; } = "gemini-2.5-pro";
     public bool EnableSearchGrounding { get; set; } = true;
     public int MaxRetries { get; set; } = 2;
-    public double DefaultTemperature { get; set; }
 }

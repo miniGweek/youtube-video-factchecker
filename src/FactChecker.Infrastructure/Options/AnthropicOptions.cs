@@ -7,5 +7,4 @@ public class AnthropicOptions
     public string StandardModel { get; set; } = "claude-sonnet-4-20250514";
     public string PremiumModel { get; set; } = "claude-sonnet-4-20250514";
     public int MaxRetries { get; set; } = 2;
-    public double DefaultTemperature { get; set; }
 }
