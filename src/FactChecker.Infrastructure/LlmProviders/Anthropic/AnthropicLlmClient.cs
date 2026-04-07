@@ -10,8 +10,6 @@ using Microsoft.Extensions.Options;
 using Polly;
 using Polly.CircuitBreaker;
 using Polly.Retry;
-using AnthropicException = FactChecker.Infrastructure.Anthropic.AnthropicException;
-
 namespace FactChecker.Infrastructure.LlmProviders.Anthropic;
 
 /// <summary>

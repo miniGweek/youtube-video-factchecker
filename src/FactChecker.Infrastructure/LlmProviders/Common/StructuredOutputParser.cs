@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -6,7 +7,7 @@ namespace FactChecker.Infrastructure.LlmProviders.Common;
 /// <summary>
 /// Parses structured JSON output from LLM responses.
 /// Handles common quirks: markdown code fences, leading/trailing whitespace,
-/// full-line JavaScript-style comments.
+/// full-line JavaScript-style comments, unquoted property names.
 /// </summary>
 public static class StructuredOutputParser
 {
@@ -77,8 +78,15 @@ public static class StructuredOutputParser
             for (int i = start; i < trimmed.Length; i++)
             {
                 char c = trimmed[i];
-                if (c == '"' && (i == 0 || trimmed[i - 1] != '\\'))
-                    inString = !inString;
+                if (c == '"')
+                {
+                    // Count consecutive preceding backslashes — quote is escaped only when count is odd
+                    int backslashes = 0;
+                    for (int j = i - 1; j >= start && trimmed[j] == '\\'; j--)
+                        backslashes++;
+                    if (backslashes % 2 == 0)
+                        inString = !inString;
+                }
                 if (!inString)
                 {
                     if (c == '{') depth++;
@@ -91,28 +99,135 @@ public static class StructuredOutputParser
     }
 
     /// <summary>
-    /// Repairs common LLM JSON quirks that would otherwise cause parse failures.
-    /// Currently strips full-line JavaScript-style comments (lines beginning with //).
+    /// Repairs common LLM JSON quirks that would otherwise cause parse failures:
+    /// <list type="bullet">
+    ///   <item>Strips full-line JavaScript-style comments (lines beginning with //).</item>
+    ///   <item>Quotes unquoted property names (e.g., <c>name:</c> → <c>"name":</c>).</item>
+    /// </list>
     /// Inline comments are intentionally NOT stripped to avoid corrupting URLs in string values.
     /// </summary>
     private static string RepairCommonQuirks(string json)
     {
-        // Quick exit: no comment marker present at all
-        if (!json.Contains("//", StringComparison.Ordinal))
-            return json;
-
-        var lines = json.Split('\n');
-        var anyStripped = false;
-        for (int i = 0; i < lines.Length; i++)
+        // Strip full-line comments
+        if (json.Contains("//", StringComparison.Ordinal))
         {
-            if (lines[i].TrimStart().StartsWith("//", StringComparison.Ordinal))
+            var lines = json.Split('\n');
+            var anyStripped = false;
+            for (int i = 0; i < lines.Length; i++)
             {
-                lines[i] = string.Empty;
-                anyStripped = true;
+                if (lines[i].TrimStart().StartsWith("//", StringComparison.Ordinal))
+                {
+                    lines[i] = string.Empty;
+                    anyStripped = true;
+                }
             }
+            if (anyStripped)
+                json = string.Join('\n', lines);
         }
 
-        return anyStripped ? string.Join('\n', lines) : json;
+        // Quote unquoted property names using a context-aware scanner that
+        // correctly skips content inside quoted string values. The previous
+        // regex approach would corrupt strings like "study, paragraph: ..."
+        // because it matched identifiers inside string values when preceded
+        // by a comma, turning the value into invalid JSON.
+        return QuoteUnquotedKeys(json);
+    }
+
+    /// <summary>
+    /// Scans <paramref name="json"/> character-by-character, quoting any
+    /// unquoted property name (identifier immediately followed by <c>:</c>)
+    /// that appears after a <c>{</c> or <c>,</c> outside of a string value.
+    /// </summary>
+    private static string QuoteUnquotedKeys(string json)
+    {
+        var sb = new StringBuilder(json.Length + 64);
+        int i = 0;
+        int len = json.Length;
+
+        while (i < len)
+        {
+            char c = json[i];
+
+            // Copy quoted strings verbatim, respecting escape sequences.
+            // This prevents the key-detection logic below from firing on
+            // content like "some text, paragraph: details" where the comma
+            // is inside a value, not a JSON property separator.
+            if (c == '"')
+            {
+                sb.Append(c);
+                i++;
+                while (i < len)
+                {
+                    char sc = json[i];
+                    sb.Append(sc);
+                    if (sc == '\\' && i + 1 < len)
+                    {
+                        i++;
+                        sb.Append(json[i]); // escaped character, copy verbatim
+                    }
+                    else if (sc == '"')
+                    {
+                        break; // end of string
+                    }
+                    i++;
+                }
+                i++;
+                continue;
+            }
+
+            // After '{' or ',' we may be at the start of a property name.
+            if (c == '{' || c == ',')
+            {
+                sb.Append(c);
+                i++;
+
+                // Capture any whitespace between delimiter and the next token.
+                int wsStart = i;
+                while (i < len && json[i] is ' ' or '\t' or '\r' or '\n')
+                    i++;
+
+                // If the next char is a letter or '_' and not a quote/bracket,
+                // it could be an unquoted key.
+                if (i < len && json[i] != '"' && json[i] != '}' && json[i] != ']'
+                    && (char.IsLetter(json[i]) || json[i] == '_'))
+                {
+                    int idStart = i;
+                    while (i < len && (char.IsLetterOrDigit(json[i]) || json[i] == '_'))
+                        i++;
+                    int idEnd = i;
+
+                    // Skip optional whitespace between identifier and potential colon.
+                    int ws2Start = i;
+                    while (i < len && json[i] is ' ' or '\t')
+                        i++;
+
+                    if (i < len && json[i] == ':')
+                    {
+                        // Confirmed unquoted key — emit with surrounding quotes.
+                        sb.Append(json, wsStart, idStart - wsStart); // leading whitespace
+                        sb.Append('"');
+                        sb.Append(json, idStart, idEnd - idStart);   // key text
+                        sb.Append('"');
+                        sb.Append(json, ws2Start, i - ws2Start);     // whitespace before ':'
+                        // The ':' will be appended by the next outer-loop iteration.
+                        continue;
+                    }
+
+                    // Not a key (no colon follows) — emit everything we consumed.
+                    sb.Append(json, wsStart, i - wsStart);
+                    continue;
+                }
+
+                // Next token is a quote, bracket, or non-identifier — emit whitespace as-is.
+                sb.Append(json, wsStart, i - wsStart);
+                continue;
+            }
+
+            sb.Append(c);
+            i++;
+        }
+
+        return sb.ToString();
     }
 }
 

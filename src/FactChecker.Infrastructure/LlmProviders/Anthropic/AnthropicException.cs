@@ -1,6 +1,6 @@
 using System.Net;
 
-namespace FactChecker.Infrastructure.Anthropic;
+namespace FactChecker.Infrastructure.LlmProviders.Anthropic;
 
 public sealed class AnthropicException : Exception
 {

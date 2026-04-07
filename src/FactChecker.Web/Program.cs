@@ -67,10 +67,18 @@ builder.Services.AddSingleton<IAnalysisStore, InMemoryAnalysisStore>();
 
 builder.Services.AddTransient<AnalysisPipeline>();
 
+// ── Background processing ────────────────────────────────────────────────────
+
+builder.Services.AddSingleton<BackgroundAnalysisRunner>();
+builder.Services.AddSingleton<IAnalysisDispatcher>(sp => sp.GetRequiredService<BackgroundAnalysisRunner>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<BackgroundAnalysisRunner>());
+
 // ── ASP.NET Core ──────────────────────────────────────────────────────────────
 
 builder.Services.AddRazorPages();
 builder.Services.AddTransient<ViewRenderer>();
+
+builder.Services.AddHealthChecks();
 
 builder.Services.AddCors(options =>
 {
@@ -93,6 +101,7 @@ app.UseStaticFiles();
 app.UseCors();
 app.UseRouting();
 app.MapRazorPages();
+app.MapHealthChecks("/health");
 app.MapAnalysisEndpoints();
 
 app.Run();

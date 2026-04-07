@@ -5,7 +5,6 @@ using FactChecker.Infrastructure.LlmProviders.Anthropic;
 using FactChecker.Infrastructure.LlmProviders.Common;
 using FactChecker.Infrastructure.Options;
 using Microsoft.Extensions.Logging.Abstractions;
-using AnthropicException = FactChecker.Infrastructure.Anthropic.AnthropicException;
 using OptionsFactory = Microsoft.Extensions.Options.Options;
 
 namespace FactChecker.Infrastructure.Tests.LlmProviders.Anthropic;

@@ -11,12 +11,14 @@ namespace FactChecker.Infrastructure.Events;
 /// In-process event transport backed by <see cref="System.Threading.Channels"/>.
 /// Creates one unbounded channel per analysis ID. The channel is completed (closed for writing)
 /// when <see cref="Complete"/> is called by the pipeline.
+/// Completed channels are removed after all subscribers drain.
 /// Implements <see cref="IAnalysisEventSink"/>, <see cref="IAnalysisEventSource"/>,
 /// and <see cref="IAnalysisEventCompleter"/>.
 /// </summary>
 public sealed class ChannelEventTransport : IAnalysisEventSink, IAnalysisEventSource, IAnalysisEventCompleter
 {
     private readonly ConcurrentDictionary<string, Channel<AnalysisEvent>> _channels = new();
+    private readonly ConcurrentDictionary<string, int> _subscriberCounts = new();
 
     private Channel<AnalysisEvent> GetOrCreateChannel(string analysisId) =>
         _channels.GetOrAdd(analysisId, static _ => Channel.CreateUnbounded<AnalysisEvent>(
@@ -35,8 +37,22 @@ public sealed class ChannelEventTransport : IAnalysisEventSink, IAnalysisEventSo
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(analysisId);
         var channel = GetOrCreateChannel(analysisId);
-        await foreach (var evt in channel.Reader.ReadAllAsync(ct).ConfigureAwait(false))
-            yield return evt;
+        _subscriberCounts.AddOrUpdate(analysisId, 1, static (_, count) => count + 1);
+
+        try
+        {
+            await foreach (var evt in channel.Reader.ReadAllAsync(ct).ConfigureAwait(false))
+                yield return evt;
+        }
+        finally
+        {
+            var remaining = _subscriberCounts.AddOrUpdate(analysisId, 0, static (_, count) => count - 1);
+            if (remaining <= 0 && channel.Reader.Completion.IsCompleted)
+            {
+                _channels.TryRemove(analysisId, out _);
+                _subscriberCounts.TryRemove(analysisId, out _);
+            }
+        }
     }
 
     public void Complete(string analysisId)
@@ -46,5 +62,7 @@ public sealed class ChannelEventTransport : IAnalysisEventSink, IAnalysisEventSo
         // Complete() sees an already-completed channel and yields zero items.
         var channel = GetOrCreateChannel(analysisId);
         channel.Writer.TryComplete();
+        // Cleanup deferred to SubscribeAsync finally block — removing here would
+        // cause late subscribers to get a new, never-completed channel.
     }
 }

@@ -27,21 +27,26 @@ internal static class AnalysisEndpoints
     }
 
     // POST /api/analyse
-    private static IResult PostAnalyse(
+    private static async Task<IResult> PostAnalyse(
         [FromBody] AnalyseRequest? request,
-        IAnalysisStore store,
-        AnalysisPipeline pipeline)
+        IAnalysisDispatcher queue,
+        IAnalysisStore store)
     {
         if (request?.Url is not { } videoUri)
             return Results.BadRequest(new { error = "Missing or empty 'url' field." });
 
-        if (!YouTubeUrlValidator.TryParseVideoId(videoUri, out _))
+        if (!YouTubeUrlValidator.TryParseVideoId(videoUri, out var videoId))
             return Results.BadRequest(new { error = "URL does not appear to be a valid YouTube video URL." });
 
-        var analysisId = Guid.NewGuid().ToString("N");
+        // Return existing in-progress analysis for the same video
+        var existingId = store.TryGetActiveByVideoId(videoId);
+        if (existingId is not null)
+            return Results.Accepted($"/api/analyse/{existingId}", new { analysisId = existingId });
 
-        // Fire and forget — pipeline publishes events and never throws
-        _ = Task.Run(() => pipeline.RunAsync(analysisId, videoUri));
+        var analysisId = Guid.NewGuid().ToString("N");
+        store.TrackVideoId(videoId, analysisId);
+
+        await queue.EnqueueAsync(analysisId, videoUri).ConfigureAwait(false);
 
         return Results.Accepted($"/api/analyse/{analysisId}", new { analysisId });
     }

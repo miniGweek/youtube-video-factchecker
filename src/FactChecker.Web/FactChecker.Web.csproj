@@ -16,4 +16,8 @@
     <UserSecretsId>8ae15b5b-88bd-4094-931d-04a09b0c34eb</UserSecretsId>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="FactChecker.Web.Tests" />
+  </ItemGroup>
+
 </Project>

@@ -125,6 +125,97 @@ public class StructuredOutputParserTests
         Assert.Equal(5, result.Value);
     }
 
+    // ── brace-counting edge cases ──────────────────────────────────────────
+
+    [Fact]
+    public void ExtractJson_EscapedBackslashBeforeQuote_HandledCorrectly()
+    {
+        // \\" in JSON means escaped backslash followed by unescaped quote (end of string)
+        // The parser must not treat the quote as still inside the string
+        var input = """Some text {"name":"path\\","value":1} done""";
+        Assert.Equal("""{"name":"path\\","value":1}""", StructuredOutputParser.ExtractJson(input));
+    }
+
+    [Fact]
+    public void ExtractJson_SingleEscapedQuoteInString_StaysInString()
+    {
+        // \" is an escaped quote — should stay inside the string
+        var input = """{"name":"say \"hello\"","value":2}""";
+        Assert.Equal("""{"name":"say \"hello\"","value":2}""", StructuredOutputParser.ExtractJson(input));
+    }
+
+    // ── unquoted property names ────────────────────────────────────────────
+
+    [Fact]
+    public void Parse_UnquotedPropertyNames_QuotesAndDeserializes()
+    {
+        var json = """{ name: "test", value: 42 }""";
+
+        var result = StructuredOutputParser.Parse<TestPayload>(json);
+
+        Assert.Equal("test", result.Name);
+        Assert.Equal(42, result.Value);
+    }
+
+    [Fact]
+    public void Parse_MixedQuotedAndUnquotedKeys_Deserializes()
+    {
+        var json = """
+            {
+              "name": "mixed",
+              value: 7
+            }
+            """;
+
+        var result = StructuredOutputParser.Parse<TestPayload>(json);
+
+        Assert.Equal("mixed", result.Name);
+        Assert.Equal(7, result.Value);
+    }
+
+    [Fact]
+    public void Parse_ColonAfterCommaInsideStringValue_DoesNotCorruptJson()
+    {
+        // The previous regex-based repair would match 'paragraph' after the comma
+        // inside the string value and corrupt the JSON by wrapping it in quotes,
+        // causing 'p' to appear as an unquoted property name after parse.
+        var json = """{"name": "study, paragraph: about vitamins", "value": 1}""";
+
+        var result = StructuredOutputParser.Parse<TestPayload>(json);
+
+        Assert.Equal("study, paragraph: about vitamins", result.Name);
+        Assert.Equal(1, result.Value);
+    }
+
+    [Fact]
+    public void Parse_UnquotedKeyInSixthArrayElement_Deserializes()
+    {
+        // Regression: claims[5] (0-indexed) crashed when the context field of an
+        // earlier claim contained ", word: ..." which the regex wrongly "repaired",
+        // causing the key of this element to appear unquoted to the JSON parser.
+        var json = """
+            {
+              "items": [
+                {"name": "1", "value": 1},
+                {"name": "2", "value": 2},
+                {"name": "3", "value": 3},
+                {"name": "4", "value": 4},
+                {"name": "5, protein: dense", "value": 5},
+                {name: "6", value: 6}
+              ]
+            }
+            """;
+
+        var result = StructuredOutputParser.Parse<TestItemList>(json);
+
+        Assert.Equal(6, result.Items.Count);
+        Assert.Equal("5, protein: dense", result.Items[4].Name);
+        Assert.Equal("6", result.Items[5].Name);
+        Assert.Equal(6, result.Items[5].Value);
+    }
+
+    private record TestItemList(List<TestPayload> Items);
+
     // ── error cases ──────────────────────────────────────────────────────────
 
     [Fact]

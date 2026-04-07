@@ -7,13 +7,13 @@ using FactChecker.Core.Interfaces;
 using FactChecker.Core.Models;
 using FactChecker.Core.Options;
 using FactChecker.Core.Pipeline;
-using FactChecker.Core.Scoring;
+using Microsoft.Extensions.Options;
 using FactChecker.Infrastructure.Events;
 using FactChecker.Infrastructure.Storage;
+using FactChecker.Web.Services;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FactChecker.Web.Tests;
 
@@ -97,7 +97,7 @@ public class AnalysisEndpointTests : IClassFixture<WebApplicationFactory<Program
     [Fact]
     public async Task GetById_RunningAnalysis_Returns202()
     {
-        var store = new InMemoryAnalysisStore();
+        var store = new InMemoryAnalysisStore(Options.Create(new AnalysisOptions()));
         var result = new AnalysisResult("test-id");
         store.Add(result);
         var client = CreateClientWithStore(store);
@@ -110,7 +110,7 @@ public class AnalysisEndpointTests : IClassFixture<WebApplicationFactory<Program
     [Fact]
     public async Task GetById_CompleteAnalysis_Returns200()
     {
-        var store = new InMemoryAnalysisStore();
+        var store = new InMemoryAnalysisStore(Options.Create(new AnalysisOptions()));
         var result = BuildCompleteResult("done-id");
         store.Add(result);
         var client = CreateClientWithStore(store);
@@ -123,7 +123,7 @@ public class AnalysisEndpointTests : IClassFixture<WebApplicationFactory<Program
     [Fact]
     public async Task GetById_FailedAnalysis_Returns200()
     {
-        var store = new InMemoryAnalysisStore();
+        var store = new InMemoryAnalysisStore(Options.Create(new AnalysisOptions()));
         var result = new AnalysisResult("fail-id");
         result.Fail(AnalysisStage.Summarisation, "Something went wrong.");
         store.Add(result);
@@ -207,8 +207,8 @@ public class AnalysisEndpointTests : IClassFixture<WebApplicationFactory<Program
         {
             builder.ConfigureServices(services =>
             {
-                services.RemoveAll<AnalysisPipeline>();
-                services.AddTransient<AnalysisPipeline>(sp => BuildNoOpPipeline(sp));
+                services.RemoveAll<IAnalysisDispatcher>();
+                services.AddSingleton<IAnalysisDispatcher>(new NoOpDispatcher());
             });
         }).CreateClient();
     }
@@ -221,8 +221,8 @@ public class AnalysisEndpointTests : IClassFixture<WebApplicationFactory<Program
             {
                 services.RemoveAll<IAnalysisStore>();
                 services.AddSingleton(store);
-                services.RemoveAll<AnalysisPipeline>();
-                services.AddTransient<AnalysisPipeline>(sp => BuildNoOpPipeline(sp));
+                services.RemoveAll<IAnalysisDispatcher>();
+                services.AddSingleton<IAnalysisDispatcher>(new NoOpDispatcher());
             });
         }).CreateClient();
     }
@@ -241,28 +241,11 @@ public class AnalysisEndpointTests : IClassFixture<WebApplicationFactory<Program
                 services.AddSingleton<IAnalysisEventSink>(transport);
                 services.AddSingleton<IAnalysisEventSource>(transport);
                 services.AddSingleton<IAnalysisEventCompleter>(transport);
-                services.RemoveAll<AnalysisPipeline>();
-                services.AddTransient<AnalysisPipeline>(sp => BuildNoOpPipeline(sp));
+                services.RemoveAll<IAnalysisDispatcher>();
+                services.AddSingleton<IAnalysisDispatcher>(new NoOpDispatcher());
             });
         }).CreateClient();
     }
-
-    private static AnalysisPipeline BuildNoOpPipeline(IServiceProvider sp) =>
-        new(
-            new FakeMetadataProvider(),
-            new FakeTranscriptExtractor(),
-            new FakeDomainDetector(),
-            new FakeSummariser(),
-            new FakeClaimExtractor(),
-            new FakeClaimVerifier(),
-            new FakeSourceValidator(),
-            new DefaultScoringEngine(),
-            new FakeAssessmentGenerator(),
-            sp.GetRequiredService<IAnalysisEventSink>(),
-            sp.GetRequiredService<IAnalysisEventCompleter>(),
-            sp.GetRequiredService<IAnalysisStore>(),
-            sp.GetRequiredService<AnalysisOptions>(),
-            NullLogger<AnalysisPipeline>.Instance);
 
     private static AnalysisResult BuildCompleteResult(string id)
     {
@@ -280,54 +263,9 @@ public class AnalysisEndpointTests : IClassFixture<WebApplicationFactory<Program
 
     // ── Minimal fakes ─────────────────────────────────────────────────────────
 
-    private sealed class FakeMetadataProvider : IVideoMetadataProvider
+    private sealed class NoOpDispatcher : IAnalysisDispatcher
     {
-        public Task<VideoInfo> GetMetadataAsync(Uri videoUri, CancellationToken ct = default) =>
-            Task.FromResult(new VideoInfo(videoUri, "abc", "T", "C", TimeSpan.FromMinutes(5), null));
-    }
-
-    private sealed class FakeTranscriptExtractor : ITranscriptExtractor
-    {
-        public Task<Transcript> ExtractAsync(string videoId, CancellationToken ct = default) =>
-            Task.FromResult(new Transcript("text", TranscriptQuality.Manual, 1));
-    }
-
-    private sealed class FakeDomainDetector : IDomainDetector
-    {
-        public Task<ContentDomain> DetectAsync(string snippet, CancellationToken ct = default) =>
-            Task.FromResult(ContentDomain.General);
-    }
-
-    private sealed class FakeSummariser : ISummariser
-    {
-        public Task<Summary> SummariseAsync(string transcript, ContentDomain domain, CancellationToken ct = default) =>
-            Task.FromResult(new Summary("Thesis", ["P1"], domain));
-    }
-
-    private sealed class FakeClaimExtractor : IClaimExtractor
-    {
-        public Task<IReadOnlyList<Claim>> ExtractAsync(
-            string transcript, ContentDomain domain, int max, CancellationToken ct = default) =>
-            Task.FromResult<IReadOnlyList<Claim>>([]);
-    }
-
-    private sealed class FakeClaimVerifier : IClaimVerifier
-    {
-        public Task<FactCheck> VerifyAsync(Claim claim, Summary summary, ContentDomain domain, CancellationToken ct = default) =>
-            Task.FromResult(new FactCheck(claim.Id, Verdict.Supported, Confidence.High, "OK", []));
-    }
-
-    private sealed class FakeSourceValidator : ISourceValidator
-    {
-        public Task<Source> ValidateAsync(Source source, CancellationToken ct = default) =>
-            Task.FromResult(source);
-    }
-
-    private sealed class FakeAssessmentGenerator : IAssessmentGenerator
-    {
-        public Task<Assessment> GenerateAsync(
-            Summary summary, IReadOnlyList<FactCheck> factChecks,
-            ScoreBreakdown score, CancellationToken ct = default) =>
-            Task.FromResult(new Assessment(WatchRecommendation.Watch, "Good.", "High", []));
+        public ValueTask EnqueueAsync(string analysisId, Uri videoUri, CancellationToken ct = default) =>
+            ValueTask.CompletedTask;
     }
 }
