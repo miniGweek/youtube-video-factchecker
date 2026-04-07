@@ -77,8 +77,15 @@ public static class StructuredOutputParser
             for (int i = start; i < trimmed.Length; i++)
             {
                 char c = trimmed[i];
-                if (c == '"' && (i == 0 || trimmed[i - 1] != '\\'))
-                    inString = !inString;
+                if (c == '"')
+                {
+                    // Count consecutive preceding backslashes — quote is escaped only when count is odd
+                    int backslashes = 0;
+                    for (int j = i - 1; j >= start && trimmed[j] == '\\'; j--)
+                        backslashes++;
+                    if (backslashes % 2 == 0)
+                        inString = !inString;
+                }
                 if (!inString)
                 {
                     if (c == '{') depth++;

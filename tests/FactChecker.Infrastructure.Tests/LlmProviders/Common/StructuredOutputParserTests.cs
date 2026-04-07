@@ -125,6 +125,25 @@ public class StructuredOutputParserTests
         Assert.Equal(5, result.Value);
     }
 
+    // ── brace-counting edge cases ──────────────────────────────────────────
+
+    [Fact]
+    public void ExtractJson_EscapedBackslashBeforeQuote_HandledCorrectly()
+    {
+        // \\" in JSON means escaped backslash followed by unescaped quote (end of string)
+        // The parser must not treat the quote as still inside the string
+        var input = """Some text {"name":"path\\","value":1} done""";
+        Assert.Equal("""{"name":"path\\","value":1}""", StructuredOutputParser.ExtractJson(input));
+    }
+
+    [Fact]
+    public void ExtractJson_SingleEscapedQuoteInString_StaysInString()
+    {
+        // \" is an escaped quote — should stay inside the string
+        var input = """{"name":"say \"hello\"","value":2}""";
+        Assert.Equal("""{"name":"say \"hello\"","value":2}""", StructuredOutputParser.ExtractJson(input));
+    }
+
     // ── error cases ──────────────────────────────────────────────────────────
 
     [Fact]
