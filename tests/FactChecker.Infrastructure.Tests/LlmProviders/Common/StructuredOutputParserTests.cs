@@ -144,6 +144,35 @@ public class StructuredOutputParserTests
         Assert.Equal("""{"name":"say \"hello\"","value":2}""", StructuredOutputParser.ExtractJson(input));
     }
 
+    // ── unquoted property names ────────────────────────────────────────────
+
+    [Fact]
+    public void Parse_UnquotedPropertyNames_QuotesAndDeserializes()
+    {
+        var json = """{ name: "test", value: 42 }""";
+
+        var result = StructuredOutputParser.Parse<TestPayload>(json);
+
+        Assert.Equal("test", result.Name);
+        Assert.Equal(42, result.Value);
+    }
+
+    [Fact]
+    public void Parse_MixedQuotedAndUnquotedKeys_Deserializes()
+    {
+        var json = """
+            {
+              "name": "mixed",
+              value: 7
+            }
+            """;
+
+        var result = StructuredOutputParser.Parse<TestPayload>(json);
+
+        Assert.Equal("mixed", result.Name);
+        Assert.Equal(7, result.Value);
+    }
+
     // ── error cases ──────────────────────────────────────────────────────────
 
     [Fact]

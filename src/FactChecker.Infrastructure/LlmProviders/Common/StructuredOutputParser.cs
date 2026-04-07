@@ -13,6 +13,12 @@ public static class StructuredOutputParser
     private static readonly Regex MarkdownFencePattern =
         new(@"```(?:json)?\s*\n?([\s\S]*?)\n?```", RegexOptions.Compiled);
 
+    // Matches unquoted property names: a bare identifier followed by ':'
+    // in a property-name position (after '{', ',', or start of line).
+    // Captures the key so it can be wrapped in quotes.
+    private static readonly Regex UnquotedKeyPattern =
+        new(@"(?<=[\{,]\s*\n?\s*)([a-zA-Z_]\w*)\s*(?=:)", RegexOptions.Compiled | RegexOptions.Multiline);
+
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -98,28 +104,43 @@ public static class StructuredOutputParser
     }
 
     /// <summary>
-    /// Repairs common LLM JSON quirks that would otherwise cause parse failures.
-    /// Currently strips full-line JavaScript-style comments (lines beginning with //).
+    /// Repairs common LLM JSON quirks that would otherwise cause parse failures:
+    /// <list type="bullet">
+    ///   <item>Strips full-line JavaScript-style comments (lines beginning with //).</item>
+    ///   <item>Quotes unquoted property names (e.g., <c>name:</c> → <c>"name":</c>).</item>
+    /// </list>
     /// Inline comments are intentionally NOT stripped to avoid corrupting URLs in string values.
     /// </summary>
     private static string RepairCommonQuirks(string json)
     {
-        // Quick exit: no comment marker present at all
-        if (!json.Contains("//", StringComparison.Ordinal))
-            return json;
+        var changed = false;
 
-        var lines = json.Split('\n');
-        var anyStripped = false;
-        for (int i = 0; i < lines.Length; i++)
+        // Strip full-line comments
+        if (json.Contains("//", StringComparison.Ordinal))
         {
-            if (lines[i].TrimStart().StartsWith("//", StringComparison.Ordinal))
+            var lines = json.Split('\n');
+            for (int i = 0; i < lines.Length; i++)
             {
-                lines[i] = string.Empty;
-                anyStripped = true;
+                if (lines[i].TrimStart().StartsWith("//", StringComparison.Ordinal))
+                {
+                    lines[i] = string.Empty;
+                    changed = true;
+                }
             }
+
+            if (changed)
+                json = string.Join('\n', lines);
         }
 
-        return anyStripped ? string.Join('\n', lines) : json;
+        // Quote unquoted property names (e.g., LLM emits JavaScript-style object literals)
+        var quoted = UnquotedKeyPattern.Replace(json, "\"$1\"");
+        if (!ReferenceEquals(quoted, json))
+        {
+            json = quoted;
+            changed = true;
+        }
+
+        return json;
     }
 }
 
